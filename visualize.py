@@ -392,6 +392,13 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--browser",
+        "-b",
+        default="chrome",
+        help="Browser to use for the GUI",
+    )
+
+    parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
@@ -438,7 +445,7 @@ def main():
         dataset,
         args.show_tools,
     )
-    app.launch('browser')  # show it now in a browser
+    app.launch(f'{args.browser}-browser')  # show it now in a browser
     flx.run()  # enter the mainloop
 
     return 0
