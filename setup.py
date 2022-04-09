@@ -33,9 +33,9 @@ setuptools.setup(
         "scipy>=1.2.0",
         "sklearn==0.0",
         "tensorboard-plugin-wit>=1.7.0",
-        "tensorboard>=2.3.0",
-        "tensorflow-estimator>=2.3.0",
-        "tensorflow>=2.3.1",
+        "tensorboard>=2.3.0,<=2.5.0",
+        "tensorflow-estimator==2.3.*",
+        "tensorflow==2.3.1",
         "tqdm==4.51.0",
     ],
 )

@@ -1,0 +1,28 @@
+pipeline:
+#  - train_and_extract
+  - explain
+
+datasets: # specify which experiments to run the experiments for
+  - xor
+#  - metabric-er
+#  - metabric-hist
+
+
+
+extraction_methods: # specify which baselines to run
+  - eclaire
+#  - deep_red
+#  - pedc5.0
+#  - rem_d
+#  - c5.0
+
+force_rerun:
+  - data_split
+  - fold_split
+  - grid_search
+  - nn_train
+  - rule_extraction
+
+
+explainability: # config for PipelineExplainer
+  metric: tau
