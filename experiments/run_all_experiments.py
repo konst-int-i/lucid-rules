@@ -164,8 +164,9 @@ def main(**kwargs):
     for experiment in grid:
         logging.info(f"Running experiment - Dataset: {experiment['dataset']} - Method: {experiment['method']}")
 
-
-        # STEP 1 - TRAIN DNN AND RUN RULE EXTRACTION (BASELINE)
+        #########################################################
+        # STEP 1 - TRAIN DNN AND RUN RULE EXTRACTION (BASELINE) #
+        #########################################################
         if "train_and_extract" in config.pipeline:
 
             # create new run directory when training and extraction is rerun
@@ -187,19 +188,37 @@ def main(**kwargs):
             output_dir = run_dir.joinpath(f"{experiment['dataset']}_{experiment['method']}")
             assert os.path.exists(output_dir), f"Directory {output_dir} does not exist - check that you " \
                                                f"ran the model and extraction method combination"
-            models, rulesets = _load_model_and_ruleset(output_dir)
 
+        models, rulesets = _load_model_and_ruleset(output_dir)
         x_train_folds, y_train_folds, x_test_folds, y_test_folds = _load_data_splits(dataset=experiment['dataset'], output_dir=output_dir)
+        # read in experiment logging
+        result_path = output_dir.joinpath(f"cross_validation/5_folds/rule_extraction/"
+                                                    f"{experiment['method'].upper()}/results.csv")
+        result_df = pd.read_csv(result_path)
 
-        # STEP 2 - RUN EXPLAINABILITY MODULE
+        ######################################
+        # STEP 2 - RUN EXPLAINABILITY MODULE #
+        ######################################
         if "explain" in config.pipeline:
             n_folds = len(models)
             for fold, (model, ruleset) in enumerate(zip(models, rulesets)):
 
-                print(model, ruleset[0])
+                # print(model, ruleset[0])
                 explainer = PipelineExplainer(config, model, ruleset[0])
                 rule_ranking = explainer.rule_feature_ranking(top_n=20)
-                print(rule_ranking)
+                shap_ranking = explainer.shap_feat_ranking(top_n=20, x_train=x_train_folds[fold],
+                                                           x_test=x_test_folds[fold])
+                # plot both rankings
+                plot_dir = result_path.parent.joinpath("figures")
+                if not os.path.exists(plot_dir):
+                    os.mkdir(plot_dir)
+                plot_file = plot_dir.joinpath(f"importances_fold_{fold+1}.png")
+                explainer.plot_rankings(rule_ranking=rule_ranking, original_ranking=shap_ranking, save_path=plot_file)
+                tau, p_value = explainer.ranking_similarity(rule_ranking, shap_ranking)
+                # log in results
+                result_df.loc[result_df["fold"] == fold + 1, "tau"] = tau
+                result_df.loc[result_df["fold"] == fold + 1, "ranking_p_value"] = p_value
+        result_df.to_csv(result_path)
 
     return None
 

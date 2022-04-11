@@ -1,5 +1,5 @@
 pipeline:
-#  - train_and_extract
+  - train_and_extract
   - explain
 
 datasets: # specify which experiments to run the experiments for
