@@ -192,8 +192,9 @@ def main(**kwargs):
         models, rulesets = _load_model_and_ruleset(output_dir)
         x_train_folds, y_train_folds, x_test_folds, y_test_folds = _load_data_splits(dataset=experiment['dataset'], output_dir=output_dir)
         # read in experiment logging
+        results_subdir = os.listdir(output_dir.joinpath("cross_validation/5_folds/rule_extraction"))[0]
         result_path = output_dir.joinpath(f"cross_validation/5_folds/rule_extraction/"
-                                                    f"{experiment['method'].upper()}/results.csv")
+                                                    f"{results_subdir}/results.csv")
         result_df = pd.read_csv(result_path)
 
         ######################################
@@ -221,6 +222,26 @@ def main(**kwargs):
         result_df.to_csv(result_path)
 
     return None
+
+
+def _write_joint_results(run_folder: str) -> None:
+    """
+    Method to write summary table from all experiments
+    Args:
+        run_folder:
+
+    Returns:
+        None: writes the table as table ``results_summary.csv`` into results folder
+    """
+    # iterate through all runs
+    dfs = []
+    for single_exp in os.listdir(run_folder):
+        subdir = os.listdir(f"{run_folder}/{single_exp}/5_folds/rule_extraction")
+        result_path = f"{run_folder}/{single_exp}/5_folds/rule_extraction/{subdir}/results.csv"
+        dfs.append(pd.read_csv(result_path))
+    summary_df = pd.concat(dfs)
+    summary_df.to_csv(f"{run_folder}/results_summary.csv")
+
 
 
 def _load_data_splits(dataset: str, output_dir: Path):
@@ -274,7 +295,8 @@ def _load_model_and_ruleset(output_dir: Path) -> Tuple[List]:
     # load model and rule for each fold (1-indexed)
     for fold in range(1, n_folds+1):
         model_path = model_dir.joinpath(f"fold_{1}_model.h5")
-        rule_path = rule_dir.joinpath(f"ECLAIRE/rules_extracted/fold_{fold}.rules")
+        method_subdir = os.listdir(rule_dir)[0]
+        rule_path = rule_dir.joinpath(f"{method_subdir}/rules_extracted/fold_{fold}.rules")
         rulesets.append(_deserialize_rules(rule_path))
         models.append(load_model(model_path))
 
