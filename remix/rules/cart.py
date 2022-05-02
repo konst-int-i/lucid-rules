@@ -155,6 +155,7 @@ def cart_rules(
     rule_conclusion_map=None,
     prior_rule_confidence=1,
     regression=False,
+    sample_weight=None,
 ):
     """
     Extracts a ruleset from learning a CART decision tree that maps datapoints
@@ -227,7 +228,7 @@ def cart_rules(
             **extra_params,
         )
 
-    dt.fit(x, y)
+    dt.fit(x, y, sample_weight=sample_weight)
 
     return tree_to_ruleset(
         dt.tree_,
@@ -256,6 +257,7 @@ def random_forest_rules(
     bootstrap=True,
     prior_rule_confidence=1,
     regression=False,
+    sample_weight=None,
 ):
     """
     Extracts a ruleset from learning a random forest that maps datapoints in x
@@ -319,7 +321,7 @@ def random_forest_rules(
         **extra_params,
     )
 
-    dt.fit(x, y)
+    dt.fit(x, y, sample_weight=sample_weight)
     result_rules = set()
     for tree in dt.estimators_:
         result_rules.update(
