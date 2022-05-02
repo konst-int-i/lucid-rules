@@ -159,7 +159,7 @@ def main(**kwargs):
         "method": config.extraction_methods
     })
 
-    new_run_dir = Path(f"experiment_results/{datetime.now().strftime('%m_%d_%H_%M_%S')}")
+    run_dir = Path(f"experiment_results/{datetime.now().strftime('%m_%d_%H_%M_%S')}")
 
     for experiment in grid:
         logging.info(f"Running experiment - Dataset: {experiment['dataset']} - Method: {experiment['method']}")
@@ -170,7 +170,7 @@ def main(**kwargs):
         if "train_and_extract" in config.pipeline:
 
             # create new run directory when training and extraction is rerun
-            output_dir = new_run_dir.joinpath(f"{experiment['dataset']}_{experiment['method']}")
+            output_dir = run_dir.joinpath(f"{experiment['dataset']}_{experiment['method']}")
             if "force_rerun" in config.keys():
                 if len(config.force_rerun) == 5:
                     rerun = "all"
@@ -192,8 +192,8 @@ def main(**kwargs):
         models, rulesets = _load_model_and_ruleset(output_dir)
         x_train_folds, y_train_folds, x_test_folds, y_test_folds = _load_data_splits(dataset=experiment['dataset'], output_dir=output_dir)
         # read in experiment logging
-        results_subdir = os.listdir(output_dir.joinpath("cross_validation/5_folds/rule_extraction"))[0]
-        result_path = output_dir.joinpath(f"cross_validation/5_folds/rule_extraction/"
+        results_subdir = os.listdir(output_dir.joinpath("cross_validation/n_folds/rule_extraction"))[0]
+        result_path = output_dir.joinpath(f"cross_validation/n_folds/rule_extraction/"
                                                     f"{results_subdir}/results.csv")
         result_df = pd.read_csv(result_path)
 
@@ -221,10 +221,12 @@ def main(**kwargs):
                 result_df.loc[result_df["fold"] == fold + 1, "ranking_p_value"] = p_value
         result_df.to_csv(result_path)
 
+    _write_joint_results(run_folder=Path(run_dir))
+
     return None
 
 
-def _write_joint_results(run_folder: str) -> None:
+def _write_joint_results(run_folder: Path) -> None:
     """
     Method to write summary table from all experiments
     Args:
@@ -233,19 +235,32 @@ def _write_joint_results(run_folder: str) -> None:
     Returns:
         None: writes the table as table ``results_summary.csv`` into results folder
     """
+    exp_runs = [exp for exp in os.listdir(run_folder) if "results_summary.csv" not in exp]
+
     # iterate through all runs
     dfs = []
-    for single_exp in os.listdir(run_folder):
-        subdir = os.listdir(f"{run_folder}/{single_exp}/5_folds/rule_extraction")
-        result_path = f"{run_folder}/{single_exp}/5_folds/rule_extraction/{subdir}/results.csv"
-        dfs.append(pd.read_csv(result_path))
-    summary_df = pd.concat(dfs)
+    for single_exp in exp_runs:
+        subdir = os.listdir(f"{run_folder}/{single_exp}/cross_validation/n_folds/rule_extraction")[0]
+        result_path = f"{run_folder}/{single_exp}/cross_validation/n_folds/rule_extraction/{subdir}/results.csv"
+        exp_df = pd.read_csv(result_path)
+        exp_df  = exp_df.loc[:, ~exp_df.columns.str.contains('^Unnamed')]
+        # exp_df.loc[:, "dataset"] = single_exp.split("_")[0]
+        # exp_df.loc[:, "model"] = single_exp.split("_")[1]
+
+        exp_df.insert(0, "dataset", single_exp.split("_")[0])
+        exp_df.insert(0, "model", single_exp.split("_")[1])
+        exp_df["fold"] = exp_df["fold"].astype("int")
+
+        dfs.append(exp_df)
+    summary_df = pd.concat(dfs, sort=False)
+    # drop unnamed columns:
+
     summary_df.to_csv(f"{run_folder}/results_summary.csv")
 
 
 
 def _load_data_splits(dataset: str, output_dir: Path):
-    split_path= output_dir.joinpath(f"cross_validation/5_folds/data_split_indices.txt")
+    split_path= output_dir.joinpath(f"cross_validation/n_folds/data_split_indices.txt")
     with open(split_path, "r") as f:
         indices = f.read().split("\n")
 
@@ -287,13 +302,13 @@ def _load_model_and_ruleset(output_dir: Path) -> Tuple[List]:
     models = []
     rulesets = []
     # get the number of folds based on number of models
-    n_folds = int(sorted(os.listdir(output_dir.joinpath("cross_validation")))[0].split("_")[0])
-    model_dir = output_dir.joinpath(f"cross_validation/{n_folds}_folds/trained_models")
-    rule_dir = output_dir.joinpath(f"cross_validation/{n_folds}_folds/rule_extraction")
+    # n_folds = int(sorted(os.listdir(output_dir.joinpath("cross_validation")))[0].split("_")[0])
+    model_dir = output_dir.joinpath(f"cross_validation/n_folds/trained_models")
+    rule_dir = output_dir.joinpath(f"cross_validation/n_folds/folds/rule_extraction")
     logging.info(f"Reading in models and rules from {model_dir.parent}")
 
     # load model and rule for each fold (1-indexed)
-    for fold in range(1, n_folds+1):
+    for fold in range(1, len(os.listdir(model_dir)) + 1):
         model_path = model_dir.joinpath(f"fold_{1}_model.h5")
         method_subdir = os.listdir(rule_dir)[0]
         rule_path = rule_dir.joinpath(f"{method_subdir}/rules_extracted/fold_{fold}.rules")
