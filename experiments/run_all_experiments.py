@@ -304,7 +304,7 @@ def _load_model_and_ruleset(output_dir: Path) -> Tuple[List]:
     # get the number of folds based on number of models
     # n_folds = int(sorted(os.listdir(output_dir.joinpath("cross_validation")))[0].split("_")[0])
     model_dir = output_dir.joinpath(f"cross_validation/n_folds/trained_models")
-    rule_dir = output_dir.joinpath(f"cross_validation/n_folds/folds/rule_extraction")
+    rule_dir = output_dir.joinpath(f"cross_validation/n_folds/rule_extraction")
     logging.info(f"Reading in models and rules from {model_dir.parent}")
 
     # load model and rule for each fold (1-indexed)
