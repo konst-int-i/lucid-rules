@@ -221,12 +221,13 @@ def main(**kwargs):
                 result_df.loc[result_df["fold"] == fold + 1, "ranking_p_value"] = p_value
         result_df.to_csv(result_path)
 
-    _write_joint_results(run_folder=Path(run_dir))
+    summary_df = _write_joint_results(run_folder=Path(run_dir))
+    agg_df = aggregate_experiments(summary_df=summary_df, run_folder=Path(run_dir))
 
     return None
 
 
-def _write_joint_results(run_folder: Path) -> None:
+def _write_joint_results(run_folder: Path) -> pd.DataFrame:
     """
     Method to write summary table from all experiments
     Args:
@@ -235,7 +236,7 @@ def _write_joint_results(run_folder: Path) -> None:
     Returns:
         None: writes the table as table ``results_summary.csv`` into results folder
     """
-    exp_runs = [exp for exp in os.listdir(run_folder) if "results_summary.csv" not in exp]
+    exp_runs = [exp for exp in os.listdir(run_folder) if exp not in ["results_summary.csv", "results_aggregated.csv"]]
 
     # iterate through all runs
     dfs = []
@@ -256,15 +257,38 @@ def _write_joint_results(run_folder: Path) -> None:
     # drop unnamed columns:
 
     summary_df.to_csv(f"{run_folder}/results_summary.csv")
+    return summary_df
 
+def aggregate_experiments(summary_df: pd.DataFrame, run_folder: Path) -> None:
+    """
+    Calculates relevant aggregate metrics for experiment results across seeds
+    """
 
+    summary_df.loc[:, "total_rules"] = summary_df["re_n_rules_per_class"].apply(lambda x: x.split(",")[0][1:]).astype("int")
+
+    result_agg = summary_df.groupby(["model", "dataset"], as_index=False).agg({
+        "nn_loss": ["mean", "std"],
+        "nn_auc": ["mean", "std"],
+        "majority_class": ["mean"],
+        "re_time (sec)": ["mean", "std"],
+        "re_memory (MB)": ["mean", "std"],
+        "re_acc": ["mean", "std"],
+        "re_fid": ["mean", "std"],
+        "re_auc": ["mean", "std"],
+        "total_rules": ["mean", "std"],
+        "tau": ["mean", "std"]
+    })
+
+    result_agg.to_csv(f"{run_folder}/results_agg.csv")
+    return result_agg
 
 def _load_data_splits(dataset: str, output_dir: Path):
     split_path= output_dir.joinpath(f"cross_validation/n_folds/data_split_indices.txt")
     with open(split_path, "r") as f:
         indices = f.read().split("\n")
 
-    data_mapping = {"xor": "XOR", "metabric-er": "MB-GE-ER", "metabric-hist": "MB-1004-GE-2Hist"}
+    data_mapping = {"xor": "XOR", "metabric-er": "MB-GE-ER", "metabric-hist": "MB-1004-GE-2Hist",
+                    "synthetic": "SYNTHETIC"}
 
     df = pd.read_csv(f"datasets/{data_mapping[dataset]}/data.csv")
     # note: last column is the target
