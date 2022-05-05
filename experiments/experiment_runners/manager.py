@@ -24,8 +24,10 @@ from . import dataset_configs
 from remix.extract_rules.pedagogical import extract_rules as pedagogical
 from remix.extract_rules.rem_t import extract_rules as rem_t
 from remix.extract_rules.rem_d import extract_rules as rem_d
-from remix.extract_rules.eclaire import extract_rules as eclaire
+# from remix.extract_rules.eclaire import extract_rules as eclaire
 from remix.extract_rules.deep_red_c5 import extract_rules as deep_red_c5
+from remix.extract_rules.eclaire_exp_base import EclaireBase as eclaire
+from remix.extract_rules.eclaire_extensions import *
 from remix.rules.ruleset import RuleScoreMechanism
 from remix.utils.data_handling import stratified_k_fold_split
 
@@ -167,7 +169,8 @@ class ExperimentManager(object):
         self.SUMMARY_FILE = os.path.join(cross_val_dir, "summary.txt")
         self.N_FOLD_CV_DP = os.path.join(
             cross_val_dir,
-            f'{self.N_FOLDS}_folds'
+            # f'{self.N_FOLDS}_folds'
+            "n_folds"
         )
         self.N_FOLD_CV_SPLIT_INDICES_FP = os.path.join(
             self.N_FOLD_CV_DP,
@@ -326,8 +329,8 @@ f
             "crem-d",
             "deepred",
             "deepred_c5",
-            "eclaire",
-            "erem-d",
+            # "eclaire",
+            # "erem-d",
             "rem-d",
             "srem-d",
         ]:
@@ -342,9 +345,12 @@ f
             if name == "rem-d":
                 run_fn = rem_d
                 real_name = "REM-D"
-            elif name in ["erem-d", "eclaire"]:
-                run_fn = eclaire
-                real_name = "ECLAIRE"
+            # elif name in ["erem-d", "eclaire"]:
+            #     run_fn = eclaire
+            #     real_name = "ECLAIRE"
+            elif name in ["eclaire-weighted", "eclaire_weighted"]:
+                run_fn = eclaire_weighted().extract_rules
+                real_name = "ECLAIRE_WEIGHTED"
             elif name in ["deepred", "deepred_c5"]:
                 run_fn = deep_red_c5
                 real_name = "DeepRED_C5"
@@ -380,6 +386,56 @@ f
                         self.DATASET_INFO.output_classes,
                     )) if (not self.DATASET_INFO.regression) else None,
                 )
+            return RuleExMode(
+                mode=real_name,
+                run=_run,
+            )
+
+        if name in ["eclaire",
+                    "eclaire-cart",
+                    "eclaire-cart-sample-weighted",
+                    "eclaire-hist-cart",
+                    "eclaire-cart-prune"
+            ]:
+            loss_function = self.HYPERPARAMS.get(
+                "loss_function",
+                "softmax_xentr",
+            )
+            last_activation = self.HYPERPARAMS.get(
+                "last_activation",
+                "softmax",
+            )
+            if name in ["eclaire"]:
+                run_obj = eclaire
+                real_name = "ECLAIRE"
+
+            if name in ["eclaire-cart"]:
+                run_obj = EclaireCart
+                real_name = "ECL_CART"
+            if name in ["eclaire-cart-sample-weighted"]:
+                run_obj = EclaireCartSampleWeighted
+                real_name = "ECL_CART_SAMPLE_W"
+            if name in ["eclaire-hist-cart"]:
+                run_obj = EclaireHistCart
+                real_name = "ECL_HIST_CART"
+            if name in ["eclaire-cart-prune"]:
+                run_obj = EclaireCartPrune
+                real_name = "ECL_CART_PRUNE"
+
+            def _run(*args, **kwargs):
+                return run_obj(
+                    *args,
+                    **kwargs,
+                    **extractor_params,
+                    last_activation=last_activation,
+                    feature_names=self.DATASET_INFO.feature_names,
+                    regression=self.DATASET_INFO.regression,
+                    output_class_names=list(map(
+                        lambda x: x.name,
+                        self.DATASET_INFO.output_classes,
+                    )) if (not self.DATASET_INFO.regression) else None,
+                ).extract_rules(*args, **kwargs)
+
             return RuleExMode(
                 mode=real_name,
                 run=_run,

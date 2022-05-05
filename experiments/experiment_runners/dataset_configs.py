@@ -52,6 +52,7 @@ AVAILABLE_DATASETS = [
     'PARTNER-Clinical',
     'PARTNER-Genomic',
     'SARCOS',
+    'SYNTHETIC',
     'TCGA-PANCAN',
     'WineQuality',
     'WineQualityClassification',
@@ -571,6 +572,18 @@ def get_data_configuration(dataset_name):
             # preprocessing=unit_scale_preprocess,
             target_col='event',
         )
+
+    if dataset_name == "synthetic":
+        output_classes = (
+            OutputClass(name='0', encoding=0),
+            OutputClass(name='1', encoding=1)
+        )
+        return DatasetDescriptor(
+            name=dataset_name,
+            output_classes=output_classes,
+            target_col='synthetic'
+        )
+
 
     if dataset_name == 'xor':
         output_classes = (

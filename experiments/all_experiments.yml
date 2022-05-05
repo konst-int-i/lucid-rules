@@ -1,20 +1,21 @@
 pipeline:
-  - train_and_extract
+#  - train_and_extract
   - explain
 
 datasets: # specify which experiments to run the experiments for
   - xor
+#  - synthetic
 #  - metabric-er
 #  - metabric-hist
-
-
+# add more complex synthetic dataset
 
 extraction_methods: # specify which baselines to run
   - eclaire
-#  - deep_red
-#  - pedc5.0
-#  - rem_d
-#  - c5.0
+  - eclaire-cart
+  - eclaire-cart-sample-weighted
+  - eclaire-hist-cart
+  - eclaire-cart-prune
+
 
 force_rerun:
   - data_split

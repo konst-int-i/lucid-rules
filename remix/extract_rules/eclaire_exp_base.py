@@ -37,6 +37,7 @@ class EclaireBase(object):
     def __init__(self,
                  model,
                  train_data,
+                 train_labels,
                  verbosity=logging.INFO,
                  last_activation=None,
                  threshold_decimals=None,
@@ -53,14 +54,8 @@ class EclaireBase(object):
                  block_size=1,
                  max_number_of_samples=None,
                  min_confidence=0,
-                 # final_algorithm_name="C5.0",
-                 # intermediate_algorithm_name="C5.0",
-                 # final_algorithm_name="cart",
-                 # intermediate_algorithm_name="cart",
-                 final_algorithm_name="cart_hist",
-                 intermediate_algorithm_name="cart_hist",
-                 # final_algorithm_name="random_forest",
-                 # intermediate_algorithm_name="random_forest",
+                 final_algorithm_name="C5.0",
+                 intermediate_algorithm_name="C5.0",
                  estimators=30,
                  ccp_prune=True,
                  regression=False,
@@ -72,12 +67,15 @@ class EclaireBase(object):
                  intermediate_drop_percent=0,
                  rule_score_mechanism=RuleScoreMechanism.Accuracy,
                  per_class_elimination=True,
-                 case_weighting=True,
+                 case_weighting=False,
+                 feature_weighting=False,
+                 interaction_prune=True,
                  **kwargs,
                  ):
 
         self.model = model
         self.train_data = train_data
+        self.train_labels = train_labels
         self.verbosity = verbosity
         self.last_activation = last_activation
         self.threshold_decimals = threshold_decimals
@@ -108,49 +106,11 @@ class EclaireBase(object):
         self.rule_score_mechanism = rule_score_mechanism
         self.per_class_elimination = per_class_elimination
         self.case_weighting = case_weighting
-
-
+        self.feature_weighting = feature_weighting
+        self.interaction_prune = interaction_prune
 
     def extract_rules(
         self,
-        # model,
-        # train_data,
-        # verbosity=logging.INFO,
-        # last_activation=None,
-        # threshold_decimals=None,
-        # winnow_intermediate=True,
-        # winnow_features=True,
-        # min_cases=15,
-        # intermediate_end_min_cases=None,
-        # initial_min_cases=None,
-        # ecclectic_min_cases=None,
-        # num_workers=1,
-        # feature_names=None,
-        # output_class_names=None,
-        # trials=1,
-        # block_size=1,
-        # max_number_of_samples=None,
-        # min_confidence=0,
-        # # final_algorithm_name="C5.0",
-        # # intermediate_algorithm_name="C5.0",
-        # # final_algorithm_name="cart",
-        # # intermediate_algorithm_name="cart",
-        # final_algorithm_name="cart_hist",
-        # intermediate_algorithm_name="cart_hist",
-        # # final_algorithm_name="random_forest",
-        # # intermediate_algorithm_name="random_forest",
-        # estimators=30,
-        # ccp_prune=True,
-        # regression=False,
-        # balance_classes=False,
-        # intermediate_tree_max_depth=None,
-        # final_tree_max_depth=None,
-        # ecclectic=False,
-        # max_intermediate_rules=float("inf"),
-        # intermediate_drop_percent=0,
-        # rule_score_mechanism=RuleScoreMechanism.Accuracy,
-        # per_class_elimination=True,
-        # case_weighting=True,
         **kwargs,
     ):
         """
@@ -270,138 +230,134 @@ class EclaireBase(object):
 
         :returns Ruleset: the set of rules extracted from the given model.
         """
-
-        if intermediate_algorithm_name == "cart_hist":
-            # return binned verison of cart
-            train_data = bin_dataset(train_data, n_bins=100)
+        self._preprocess_train()
 
         # First determine which rule extraction algorithm we will use in this
         # setting
-        if case_weighting:
-            case_prob = model.predict(train_data)
+        if self.case_weighting:
+            case_prob = self.model.predict(self.train_data)
             case_diffs = np.abs(case_prob[:, 0] - case_prob[:, 1])
             case_diffs_scaled = np.squeeze(MinMaxScaler(feature_range=(0, 1)).fit_transform(X=case_diffs.reshape(-1, 1)))
             # we want to put a higher weight on cases with a lower diff
-            # case_weights = case_diffs_scaled * -1
             case_weights = 1-case_diffs_scaled
         else:
             case_weights=1
 
-        if final_algorithm_name.lower() in ["c5.0", "c5", "see5"]:
+        if self.final_algorithm_name.lower() in ["c5.0", "c5", "see5"]:
             final_algo_call = C5
             final_algo_kwargs = dict(
-                winnow=winnow_features,
-                threshold_decimals=threshold_decimals,
-                trials=trials,
+                winnow=self.winnow_features,
+                threshold_decimals=self.threshold_decimals,
+                trials=self.trials,
                 case_weights=case_weights
             )
             # If case weighting is true, determine case weights
             # Note - case weighting only supported by C50 so far
-        elif final_algorithm_name.lower() in ["cart", "cart_hist"]:
+        elif self.final_algorithm_name.lower() in ["cart", "cart_hist"]:
             final_algo_call = cart_rules
             final_algo_kwargs = dict(
-                threshold_decimals=threshold_decimals,
-                ccp_prune=ccp_prune,
-                max_depth=final_tree_max_depth,
+                threshold_decimals=self.threshold_decimals,
+                ccp_prune=self.ccp_prune,
+                max_depth=self.final_tree_max_depth,
                 sample_weight=case_weights,
             )
-            if balance_classes:
+            if self.balance_classes:
                 final_algo_kwargs["class_weight"] = "balanced"
-        elif final_algorithm_name.lower() == "random_forest":
+        elif self.final_algorithm_name.lower() == "random_forest":
             final_algo_call = random_forest_rules
             final_algo_kwargs = dict(
-                threshold_decimals=threshold_decimals,
-                estimators=estimators,
-                max_depth=final_tree_max_depth,
+                threshold_decimals=self.threshold_decimals,
+                estimators=self.estimators,
+                max_depth=self.final_tree_max_depth,
                 sample_weight=case_weights
             )
-        elif final_algorithm_name.lower() == "hist_boosting":
+        elif self.final_algorithm_name.lower() == "hist_boosting":
             final_algo_call = hist_boosting_rules
             final_algo_kwargs = dict(
-                regression=regression,
-                max_depth=intermediate_tree_max_depth,
+                regression=self.regression,
+                max_depth=self.intermediate_tree_max_depth,
             )
         else:
             raise ValueError(
                 f'Unsupported tree extraction algorithm '
-                f'{final_algorithm_name}. Supported algorithms are '
+                f'{self.final_algorithm_name}. Supported algorithms are '
                 '"C5.0", "CART", and "random_forest".'
             )
 
-        if intermediate_algorithm_name.lower() in ["c5.0", "c5", "see5"]:
+        if self.intermediate_algorithm_name.lower() in ["c5.0", "c5", "see5"]:
             intermediate_algo_call = C5
             intermediate_algo_kwargs = dict(
-                winnow=winnow_intermediate,
-                threshold_decimals=threshold_decimals,
-                trials=trials,
+                winnow=self.winnow_intermediate,
+                threshold_decimals=self.threshold_decimals,
+                trials=self.trials,
                 case_weights=case_weights
             )
-            if regression:
+            if self.regression:
                 raise ValueError(
                     f"One can only use either CART or random_forest as an "
                     f"intermediate tree construction algorithm if the task in "
                     f"hand if a regression task."
                 )
-        elif intermediate_algorithm_name.lower() in ["cart", "cart_hist"]:
+        elif self.intermediate_algorithm_name.lower() in ["cart", "cart_hist"]:
             intermediate_algo_call = cart_rules
             intermediate_algo_kwargs = dict(
-                threshold_decimals=threshold_decimals,
-                ccp_prune=ccp_prune,
-                regression=regression,
-                max_depth=intermediate_tree_max_depth,
+                threshold_decimals=self.threshold_decimals,
+                ccp_prune=self.ccp_prune,
+                regression=self.regression,
+                max_depth=self.intermediate_tree_max_depth,
                 sample_weight=case_weights
             )
-            if balance_classes:
+            if self.balance_classes:
                 intermediate_algo_kwargs["class_weight"] = "balanced"
-        elif intermediate_algorithm_name.lower() == "random_forest":
+        elif self.intermediate_algorithm_name.lower() == "random_forest":
             intermediate_algo_call = random_forest_rules
             intermediate_algo_kwargs = dict(
-                threshold_decimals=threshold_decimals,
-                estimators=estimators,
-                regression=regression,
-                max_depth=intermediate_tree_max_depth,
+                threshold_decimals=self.threshold_decimals,
+                estimators=self.estimators,
+                regression=self.regression,
+                max_depth=self.intermediate_tree_max_depth,
                 sample_weight=case_weights
             )
-        elif intermediate_algorithm_name.lower() == "hist_boosting":
+        elif self.intermediate_algorithm_name.lower() == "hist_boosting":
             intermediate_algo_call = hist_boosting_rules
             intermediate_algo_kwargs = dict(
-                regression=regression,
-                max_depth=intermediate_tree_max_depth,
+                regression=self.regression,
+                max_depth=self.intermediate_tree_max_depth,
             )
         else:
             raise ValueError(
                 f'Unsupported tree extraction algorithm '
-                f'{intermediate_algorithm_name}. Supported algorithms are '
+                f'{self.intermediate_algorithm_name}. Supported algorithms are '
                 '"C5.0", "CART", and "random_forest".'
             )
 
-        if isinstance(rule_score_mechanism, str):
+        if isinstance(self.rule_score_mechanism, str):
             # Then let's turn it into its corresponding enum
             rule_score_mechanism = RuleScoreMechanism.from_string(
-                rule_score_mechanism
+                self.rule_score_mechanism
             )
 
         if (
-            max_intermediate_rules is not None
+            self.max_intermediate_rules is not None
         ) and (
-            not intermediate_drop_percent
+            not self.intermediate_drop_percent
         ) and (
-            max_intermediate_rules != float("inf")
+            self.max_intermediate_rules != float("inf")
         ):
-            intermediate_drop_percent = 1
+            self.intermediate_drop_percent = 1
 
         # Determine whether we want to subsample our training dataset to make it
         # more scalable or not
         sample_fraction = 0
-        if max_number_of_samples is not None:
-            if max_number_of_samples < 1:
-                sample_fraction = max_number_of_samples
-            elif max_number_of_samples < train_data.shape[0]:
-                sample_fraction = max_number_of_samples / train_data.shape[0]
+        if self.max_number_of_samples is not None:
+            if self.max_number_of_samples < 1:
+                sample_fraction = self.max_number_of_samples
+            elif self.max_number_of_samples < self.train_data.shape[0]:
+                sample_fraction = self.max_number_of_samples / self.train_data.shape[0]
 
         if sample_fraction:
             [(new_indices, _)] = stratified_k_fold_split(
-                X=train_data,
+                X=self.train_data,
                 n_folds=1,
                 test_size=(1 - sample_fraction),
                 random_state=42,
@@ -409,101 +365,52 @@ class EclaireBase(object):
             train_data = train_data[new_indices, :]
 
         cache_model = ModelCache(
-            keras_model=model,
-            train_data=train_data,
-            last_activation=last_activation,
-            feature_names=feature_names,
-            output_class_names=output_class_names,
+            keras_model=self.model,
+            train_data=self.train_data,
+            last_activation=self.last_activation,
+            feature_names=self.feature_names,
+            output_class_names=self.output_class_names,
         )
 
-        if initial_min_cases is None:
+        if self.initial_min_cases is None:
             # Then we do a constant min cases through the entire network
-            initial_min_cases = min_cases
-        if intermediate_end_min_cases is None:
-            intermediate_end_min_cases = min_cases
+            initial_min_cases = self.min_cases
+        if self.intermediate_end_min_cases is None:
+            intermediate_end_min_cases = self.min_cases
 
         # Compute our total looping space for purposes of logging our progress
-        output_layer = len(model.layers) - 1
-        input_hidden_acts = list(range(1, output_layer, block_size))
+        output_layer = len(self.model.layers) - 1
+        input_hidden_acts = list(range(1, output_layer, self.block_size))
 
-        if regression:
+        if self.regression:
             class_rule_conclusion_map = None
         else:
             # Else this is a classification task
-            num_classes = model.layers[-1].output_shape[-1]
+            num_classes = self.model.layers[-1].output_shape[-1]
             class_rule_conclusion_map = {}
             for i in range(num_classes):
-                if output_class_names is not None:
-                    class_rule_conclusion_map[i] = output_class_names[i]
+                if self.output_class_names is not None:
+                    class_rule_conclusion_map[i] = self.output_class_names[i]
                 else:
                     class_rule_conclusion_map[i] = i
 
-        if regression:
-            y_predicted = np.squeeze(model.predict(train_data), axis=-1)
+        if self.regression:
+            y_predicted = np.squeeze(self.model.predict(self.train_data), axis=-1)
         else:
-            nn_model_predictions = np.argmax(model.predict(train_data), axis=-1)
+            nn_model_predictions = np.argmax(self.model.predict(self.train_data), axis=-1)
             # C5 requires y to be a pd.Series
             y_predicted = pd.Series(nn_model_predictions)
 
         # First extract rulesets out of every intermediate block
         with tqdm(
             total=len(input_hidden_acts),
-            disable=(verbosity == logging.WARNING),
+            disable=(self.verbosity == logging.WARNING),
         ) as pbar:
             # Extract layer-wise rules
-            def _extract_rules_from_layer(
-                activation,
-                layer_idx,
-                block_idx,
-                pbar=None,
-            ):
-                if len(input_hidden_acts) > 1:
-                    slope = (intermediate_end_min_cases - initial_min_cases)
-                    slope = slope/(len(input_hidden_acts) - 1)
-                    eff_min_cases = intermediate_end_min_cases - (
-                        slope * block_idx
-                    )
-                else:
-                    eff_min_cases = intermediate_end_min_cases
-                if intermediate_end_min_cases >= 1:
-                    # Then let's make sure we pass an int
-                    eff_min_cases = int(np.ceil(eff_min_cases))
-
-                if pbar:
-                    pbar.set_description(
-                        f'Extracting ruleset for block output tensor '
-                        f'{block_idx + 1}/{len(input_hidden_acts)} (min_cases is '
-                        f'{eff_min_cases})'
-                    )
-
-                new_rules = intermediate_algo_call(
-                    x=activation,
-                    y=y_predicted,
-                    min_cases=eff_min_cases,
-                    prior_rule_confidence=1,
-                    rule_conclusion_map=class_rule_conclusion_map,
-                    **intermediate_algo_kwargs
-                )
-                if pbar:
-                    pbar.update(1)
-
-                if min_confidence:
-                    real_rules = set()
-                    for rule in new_rules:
-                        new_clauses = []
-                        for clause in rule.premise:
-                            if clause.confidence >= min_confidence:
-                                new_clauses.append(clause)
-
-                        if new_clauses:
-                            rule.premise = set(new_clauses)
-                            real_rules.add(rule)
-                    new_rules = real_rules
-                return new_rules
 
             # Now compute the effective number of workers we've got as
             # it can be less than the provided ones if we have less terms
-            effective_workers = min(num_workers, len(input_hidden_acts))
+            effective_workers = min(self.num_workers, len(input_hidden_acts))
             if effective_workers > 1:
                 # Them time to do this the multi-process way
                 pbar.set_description(
@@ -528,6 +435,14 @@ class EclaireBase(object):
                                 ),
                                 layer_idx,
                                 block_idx,
+                                input_hidden_acts,
+                                self.intermediate_end_min_cases,
+                                self.initial_min_cases,
+                                intermediate_algo_call,
+                                intermediate_algo_kwargs,
+                                class_rule_conclusion_map,
+                                y_predicted,
+                                self.min_confidence,
                             )
                         ))
 
@@ -546,6 +461,14 @@ class EclaireBase(object):
                         ),
                         block_idx=x[0],
                         layer_idx=x[1],
+                        input_hidden_acts=input_hidden_acts,
+                        intermediate_end_min_cases=intermediate_end_min_cases,
+                        initial_min_cases=initial_min_cases,
+                        intermediate_algo_call=intermediate_algo_call,
+                        intermediate_algo_kwargs=intermediate_algo_kwargs,
+                        class_rule_conclusion_map=class_rule_conclusion_map,
+                        y_predicted=y_predicted,
+                        min_confidence=self.min_confidence,
                         pbar=pbar
                     ),
                     enumerate(input_hidden_acts),
@@ -564,7 +487,7 @@ class EclaireBase(object):
                 ]
             )
             if (
-                (intermediate_drop_percent) and
+                (self.intermediate_drop_percent) and
                 (new_ruleset.num_clauses() > 1)
             ):
                 # Then let's do some rule dropping for compressing our
@@ -572,23 +495,23 @@ class EclaireBase(object):
                 # resulting algorithm
                 logging.debug(
                     f"Eliminating rules for ruleset of block {block_idx} using "
-                    f"rule ranking mechanism {rule_score_mechanism}, drop percent "
-                    f"{intermediate_drop_percent}, and max number of rules "
-                    f"{max_intermediate_rules or float('inf')}."
+                    f"rule ranking mechanism {self.rule_score_mechanism}, drop percent "
+                    f"{self.intermediate_drop_percent}, and max number of rules "
+                    f"{self.max_intermediate_rules or float('inf')}."
                 )
                 new_ruleset.rank_rules(
                     X=cache_model.get_layer_activations(
                         layer_index=layer_idx
                     ).to_numpy(),
                     y=y_predicted,
-                    score_mechanism=rule_score_mechanism,
+                    score_mechanism=self.rule_score_mechanism,
                     use_label_names=True,
                 )
                 before_elimination = new_ruleset.num_clauses()
                 new_ruleset.eliminate_rules(
-                    percent=intermediate_drop_percent,
-                    per_class=per_class_elimination,
-                    max_num=(max_intermediate_rules or float("inf")),
+                    percent=self.intermediate_drop_percent,
+                    per_class=self.per_class_elimination,
+                    max_num=(self.max_intermediate_rules or float("inf")),
                 )
                 after_elimination = new_ruleset.num_clauses()
                 logging.debug(
@@ -601,13 +524,13 @@ class EclaireBase(object):
 
         # Now time to replace all intermediate clauses with clauses that only
         # depend on the input activations
-        if ecclectic:
+        if self.ecclectic:
             end_rules = intermediate_algo_call(
                 x=cache_model.get_layer_activations(
                     layer_index=0,
                 ),
                 y=y_predicted,
-                min_cases=(ecclectic_min_cases or min_cases),
+                min_cases=(self.ecclectic_min_cases or self.min_cases),
                 prior_rule_confidence=1,
                 rule_conclusion_map=class_rule_conclusion_map,
                 **intermediate_algo_kwargs
@@ -616,7 +539,7 @@ class EclaireBase(object):
             end_rules = set()
         with tqdm(
             total=len(input_hidden_acts),
-            disable=(verbosity == logging.WARNING),
+            disable=(self.verbosity == logging.WARNING),
         ) as pbar:
             input_acts = cache_model.get_layer_activations(layer_index=0)
             for block_idx, layer_idx in enumerate(input_hidden_acts):
@@ -627,69 +550,14 @@ class EclaireBase(object):
 
                 # We will accumulate all rules extracted for this intermediate layer
                 # into a ruleset that depends only on our input activations
-                extracted_ruleset = Ruleset(feature_names=feature_names)
+                extracted_ruleset = Ruleset(feature_names=self.feature_names)
                 layer_ruleset = intermediate_rulesets[block_idx]
                 clauses = sorted(layer_ruleset.all_clauses(),  key=str)
                 num_clauses = len(clauses)
 
-                def _extract_rules_from_clause(clause, i, pbar=None):
-                    if pbar and (i is not None):
-                        pbar.set_description(
-                            f'Extracting ruleset for clause {i + 1}/'
-                            f'{num_clauses} of layer {layer_idx + 1} for '
-                            f'(min_cases is {min_cases})'
-                        )
-
-                    target = pd.Series(
-                        data=[True for _ in range(input_acts.shape[0])]
-                    )
-                    for term in clause.terms:
-                        target = np.logical_and(
-                            target,
-                            term.apply(
-                                block_out_activations[str(term.variable)]
-                            )
-                        )
-                    logging.debug(
-                        f"\tA total of {np.count_nonzero(target)}/"
-                        f"{len(target)} training samples satisfied {clause}."
-                    )
-                    if balance_classes and (
-                        final_algorithm_name.lower() in ["c5.0", "c5", "see5"]
-                    ):
-                        # Then let's extend it so that it supports unbalanced
-                        # cases in here
-                        class_weights = \
-                            sklearn.utils.class_weight.compute_class_weight(
-                                'balanced',
-                                np.unique(target),
-                                target
-                            )
-                        case_weights = [1 for _ in target]
-                        for i, label in enumerate(target):
-                            case_weights[i] = class_weights[int(label)]
-
-                        case_weights = pd.Series(data=case_weights)
-                        final_algo_kwargs['case_weights'] = case_weights
-
-                    new_rules = final_algo_call(
-                        x=input_acts,
-                        y=target,
-                        rule_conclusion_map={
-                            True: clause,
-                            False: f"not_{clause}",
-                        },
-                        prior_rule_confidence=clause.confidence,
-                        min_cases=min_cases,
-                        **final_algo_kwargs
-                    )
-                    if pbar:
-                        pbar.update(1/num_clauses)
-                    return new_rules
-
                 # Now compute the effective number of workers we've got as
                 # it can be less than the provided ones if we have less terms
-                effective_workers = min(num_workers, num_clauses)
+                effective_workers = min(self.num_workers, num_clauses)
                 if effective_workers > 1:
                     # Them time to do this the multi-process way
                     pbar.set_description(
@@ -709,7 +577,19 @@ class EclaireBase(object):
                         for j, clause in enumerate(clauses):
                             # Let's serialize our (function, args) tuple
                             serialized_clauses[j] = dill.dumps(
-                                (_extract_rules_from_clause, (clause, j))
+                                (_extract_rules_from_clause,
+                                 (clause,
+                                  j,
+                                  num_clauses,
+                                  layer_idx,
+                                  self.min_cases,
+                                  input_acts,
+                                  block_out_activations,
+                                  self.balance_classes,
+                                  self.final_algorithm_name,
+                                  final_algo_kwargs,
+                                  final_algo_call,
+                                  ))
                             )
 
                         # And do the multi-process pooling call
@@ -726,6 +606,15 @@ class EclaireBase(object):
                         lambda x: _extract_rules_from_clause(
                             clause=x[1],
                             i=x[0],
+                            num_clauses=num_clauses,
+                            layer_idx=layer_idx,
+                            min_cases=self.min_cases,
+                            input_acts=input_acts,
+                            block_out_activations=block_out_activations,
+                            balance_classes=self.balance_classes,
+                            final_algorithm_name=self.final_algorithm_name,
+                            final_algo_kwargs=final_algo_kwargs,
+                            final_algo_call=final_algo_call,
                             pbar=pbar
                         ),
                         enumerate(clauses),
@@ -753,27 +642,144 @@ class EclaireBase(object):
 
         return Ruleset(
             rules=merge(end_rules),
-            feature_names=feature_names,
-            output_class_names=output_class_names,
-            regression=regression,
+            feature_names=self.feature_names,
+            output_class_names=self.output_class_names,
+            regression=self.regression,
         )
 
 
-def bin_dataset(data: pd.DataFrame, n_bins: int = 255, exclude_cols: List = []) -> pd.DataFrame:
-    if type(data) == np.ndarray:
-        data = pd.DataFrame(data=data)
-    bin_columns = [col for col in data.columns if col not in exclude_cols]
+    def _preprocess_train(self) -> None:
+        pass
 
-    for col in bin_columns:
-        # check that unique valeus don't exceed n_bins
-        if data[col].nunique() <= n_bins:
-            print(f"Skipping column {col}; {data[col].nunique()} unique values")
-            continue
 
-        #         data[col] = pd.cut(x=data[col], bins=n_bins, precision=4)
-        data[col] = pd.qcut(x=data[col], q=n_bins, precision=4, duplicates="drop")
+def _extract_rules_from_clause(clause,
+                               i,
+                               num_clauses,
+                               layer_idx,
+                               min_cases,
+                               input_acts,
+                               block_out_activations,
+                               balance_classes,
+                               final_algorithm_name,
+                               final_algo_kwargs,
+                               final_algo_call,
+                               pbar=None):
+    if pbar and (i is not None):
+        pbar.set_description(
+            f'Extracting ruleset for clause {i + 1}/'
+            f'{num_clauses} of layer {layer_idx + 1} for '
+            f'(min_cases is {min_cases})'
+        )
 
-        # get lower bound of bin as float - more elegant solution than this?
-        data[col] = data[col].astype("str").apply(lambda x: x[1:].split(",")[0]).astype("float")
+    target = pd.Series(
+        data=[True for _ in range(input_acts.shape[0])]
+    )
+    for term in clause.terms:
+        target = np.logical_and(
+            target,
+            term.apply(
+                block_out_activations[str(term.variable)]
+            )
+        )
+    logging.debug(
+        f"\tA total of {np.count_nonzero(target)}/"
+        f"{len(target)} training samples satisfied {clause}."
+    )
+    if balance_classes and (
+            final_algorithm_name.lower() in ["c5.0", "c5", "see5"]
+    ):
+        # Then let's extend it so that it supports unbalanced
+        # cases in here
+        class_weights = \
+            sklearn.utils.class_weight.compute_class_weight(
+                'balanced',
+                np.unique(target),
+                target
+            )
+        case_weights = [1 for _ in target]
+        for i, label in enumerate(target):
+            case_weights[i] = class_weights[int(label)]
 
-    return data.to_numpy()
+        case_weights = pd.Series(data=case_weights)
+        final_algo_kwargs['case_weights'] = case_weights
+
+    new_rules = final_algo_call(
+        x=input_acts,
+        y=target,
+        rule_conclusion_map={
+            True: clause,
+            False: f"not_{clause}",
+        },
+        prior_rule_confidence=clause.confidence,
+        min_cases=min_cases,
+        **final_algo_kwargs
+    )
+    if pbar:
+        pbar.update(1 / num_clauses)
+    return new_rules
+
+
+def _extract_rules_from_layer(
+        activation,
+        layer_idx,
+        block_idx,
+        input_hidden_acts,
+        intermediate_end_min_cases,
+        initial_min_cases,
+        intermediate_algo_call,
+        intermediate_algo_kwargs,
+        class_rule_conclusion_map,
+        y_predicted,
+        min_confidence,
+        pbar=None,
+):
+    """
+    Helper function to extract rules from each layer. Note that this is a separate
+    method, since object member functions cannot be serialized
+    Returns:
+
+    """
+    if len(input_hidden_acts) > 1:
+        slope = (intermediate_end_min_cases - initial_min_cases)
+        slope = slope / (len(input_hidden_acts) - 1)
+        eff_min_cases = intermediate_end_min_cases - (
+                slope * block_idx
+        )
+    else:
+        eff_min_cases = intermediate_end_min_cases
+    if intermediate_end_min_cases >= 1:
+        # Then let's make sure we pass an int
+        eff_min_cases = int(np.ceil(eff_min_cases))
+
+    if pbar:
+        pbar.set_description(
+            f'Extracting ruleset for block output tensor '
+            f'{block_idx + 1}/{len(input_hidden_acts)} (min_cases is '
+            f'{eff_min_cases})'
+        )
+
+    new_rules = intermediate_algo_call(
+        x=activation,
+        y=y_predicted,
+        min_cases=eff_min_cases,
+        prior_rule_confidence=1,
+        rule_conclusion_map=class_rule_conclusion_map,
+        **intermediate_algo_kwargs
+    )
+    if pbar:
+        pbar.update(1)
+
+    if min_confidence:
+        real_rules = set()
+        for rule in new_rules:
+            new_clauses = []
+            for clause in rule.premise:
+                if clause.confidence >= min_confidence:
+                    new_clauses.append(clause)
+
+            if new_clauses:
+                rule.premise = set(new_clauses)
+                real_rules.add(rule)
+        new_rules = real_rules
+    return new_rules
+

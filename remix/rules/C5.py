@@ -145,7 +145,7 @@ def C5(
     seed=42,
     sample_fraction=0,
     trials=1,
-    case_weights=1, # TODO - implement case weighting
+    case_weights=1,
 ):
     y = robjects.vectors.FactorVector(
         y.map(str),
@@ -172,7 +172,10 @@ def C5(
         x=x,
         y=y,
         rules=True,
-        # weights=(case_weights or 1),
+        # weights=1,
+        # weights=np.zeros(x.shape[0]),
+        # weights=None,
+        # weights=case_weights,
         control=C50.C5_0Control(
             winnow=winnow,
             minCases=min_cases,
@@ -180,7 +183,6 @@ def C5(
             fuzzyThreshold=fuzzy_threshold,
             sample=sample_fraction,
             earlyStopping=True,
-            case_weights=case_weights,
         ),
         trials=trials,
 
