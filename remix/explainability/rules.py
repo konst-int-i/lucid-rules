@@ -98,7 +98,7 @@ class PipelineExplainer(object):
         fold = int(str(save_path)[-5])
         plt.title(f"Feature Importances - Fold {fold}")
         plt.savefig(save_path)
-        plt.show()
+        # plt.show()
 
     def aggregate_rankings(self):
         """
