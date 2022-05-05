@@ -3,8 +3,9 @@ Module for learning and extracting rules using CART decision trees.
 """
 
 from remix.logic_manipulator.merge import merge
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.experimental import enable_hist_gradient_boosting
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.tree import DecisionTreeRegressor
 import numpy as np
@@ -155,6 +156,7 @@ def cart_rules(
     rule_conclusion_map=None,
     prior_rule_confidence=1,
     regression=False,
+    sample_weight=None,
 ):
     """
     Extracts a ruleset from learning a CART decision tree that maps datapoints
@@ -227,7 +229,7 @@ def cart_rules(
             **extra_params,
         )
 
-    dt.fit(x, y)
+    dt.fit(x, y, sample_weight=sample_weight)
 
     return tree_to_ruleset(
         dt.tree_,
@@ -238,6 +240,79 @@ def cart_rules(
         prior_rule_confidence=prior_rule_confidence,
         regression=regression,
     )
+
+def hist_boosting_rules(
+        x,
+        y,
+        loss='auto',
+        learning_rate=0.1,
+        max_iter=100,
+        max_leaf_nodes=None,
+        max_depth=None,
+        min_samples_leaf=20,
+        l2_regularization=0.0,
+        max_bins=255,
+        # categorical_features=None,
+        monotonic_cst=None,
+        warm_start=False,
+        early_stopping='auto',
+        scoring='loss',
+        n_iter_no_change=10,
+        seed=42,
+        regression=False,
+        class_weight=None,
+        sample_weight=None,
+        rule_conclusion_map=None,
+        prior_rule_confidence=1,
+        min_cases=None,
+):
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+
+    if regression:
+        dt_class = HistGradientBoostingRegressor
+        # extra_params = {},
+    else:
+        dt_class = HistGradientBoostingClassifier
+        # extra_params = {
+        #     "class_weight", class_weight
+        # }
+
+    dt = dt_class(
+        loss=loss,
+        learning_rate=learning_rate,
+        max_iter=max_iter,
+        max_leaf_nodes=max_leaf_nodes,
+        max_depth=max_depth,
+        min_samples_leaf=min_samples_leaf,
+        l2_regularization=l2_regularization,
+        max_bins=max_bins,
+        # categorical_features=categorical_features,
+        monotonic_cst=monotonic_cst,
+        warm_start=warm_start,
+        early_stopping=early_stopping,
+        scoring=scoring,
+        n_iter_no_change=n_iter_no_change,
+        random_state=seed,
+        # **extra_params
+    )
+
+    dt.fit(x, y, sample_weight=sample_weight)
+
+    result_rules = set()
+    for tree in dt._predictors[0]:
+        result_rules.update(tree_to_ruleset(
+                tree,
+                threshold_decimals=None,
+                feature_names=x.columns,
+                multilabel=(len(y.shape) == 2),
+                rule_conclusion_map=None,
+                prior_rule_confidence=None,
+                regression=regression,
+            ))
+    return result_rules
+
+
 
 
 def random_forest_rules(
@@ -256,6 +331,7 @@ def random_forest_rules(
     bootstrap=True,
     prior_rule_confidence=1,
     regression=False,
+    sample_weight=None,
 ):
     """
     Extracts a ruleset from learning a random forest that maps datapoints in x
@@ -319,7 +395,7 @@ def random_forest_rules(
         **extra_params,
     )
 
-    dt.fit(x, y)
+    dt.fit(x, y, sample_weight=sample_weight)
     result_rules = set()
     for tree in dt.estimators_:
         result_rules.update(

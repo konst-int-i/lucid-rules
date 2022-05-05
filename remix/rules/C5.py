@@ -172,15 +172,17 @@ def C5(
         x=x,
         y=y,
         rules=True,
-        # weights=(case_weights or 1),
+        # weights=1,
+        # weights=np.zeros(x.shape[0]),
+        # weights=None,
+        # weights=case_weights,
         control=C50.C5_0Control(
             winnow=winnow,
             minCases=min_cases,
             seed=seed,
             fuzzyThreshold=fuzzy_threshold,
             sample=sample_fraction,
-            earlyStopping=True,  # Make bagging stop if it is
-                                 # not helpful
+            earlyStopping=True,
         ),
         trials=trials,
 

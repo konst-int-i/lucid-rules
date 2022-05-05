@@ -1,0 +1,29 @@
+pipeline:
+#  - train_and_extract
+  - explain
+
+datasets: # specify which experiments to run the experiments for
+  - xor
+#  - synthetic
+#  - metabric-er
+#  - metabric-hist
+# add more complex synthetic dataset
+
+extraction_methods: # specify which baselines to run
+  - eclaire
+  - eclaire-cart
+  - eclaire-cart-sample-weighted
+  - eclaire-hist-cart
+  - eclaire-cart-prune
+
+
+force_rerun:
+  - data_split
+  - fold_split
+  - grid_search
+  - nn_train
+  - rule_extraction
+
+
+explainability: # config for PipelineExplainer
+  metric: tau
