@@ -1,4 +1,5 @@
-from aix360.algorithms.rbm import BooleanRuleCG, FeatureBinarizer
+# from aix360.algorithms.rbm import BooleanRuleCG, FeatureBinarizer
+from lucid.cg_solver import BooleanRuleCG, FeatureBinarizer
 import pandas as pd
 import numpy as np
 import sklearn
@@ -72,9 +73,6 @@ def create_opposite_rules(cg_rules: dict) -> dict:
             if len(exp) == 0:
                 continue
             operator = exp[1]
-            # skip equality operators
-            # if operator == "==":
-            #     continue
             # map the oppositve operator to term
             exp[1] = operator_map[operator]
             # rejoin term into single sting
