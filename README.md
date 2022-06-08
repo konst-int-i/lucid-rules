@@ -57,79 +57,16 @@ python setup.py install --user
 
 ## Recreating Results
 
-To recreate any of the results reported this dissertation, you can call
-```bash
-python run_experiment.py --config experiment_configs/<dataset_name>/<method_name>_best_config.yaml
-```
-
 For a full results run, you can also run the full experiment:  
 ```bash
 python run_all_experiments
 ```
 Note that the configurations of which model and datasets should be run can be updated in `experiments/all_experiments.yml`
 
-
-
-## Running Individual Experiments
-
-Available configurations for a single experiment run: 
+To recreate any of the results reported this dissertation, you can call
 ```bash
-$python run_experiment.py --help
-usage: run_experiment.py [-h] [--config file.yaml] [--n_folds N]
-                         [--dataset_name name] [--dataset_file data.cvs]
-                         [--rule_extractor name] [--grid_search]
-                         [--output_dir path] [--randomize]
-                         [--force_rerun {all,data_split,fold_split,grid_search,nn_train,rule_extraction}]
-                         [--profile] [-d]
-                         [-p param_name=value param_name=value]
-
-Runs cross validation experiment with the given rule extraction method and our neural network training.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --config file.yaml, -c file.yaml
-                        initial configuration YAML file for our experiment's
-                        setup.
-  --n_folds N, -n N     how many folds to use for our data partitioning.
-  --dataset_name name   name of the dataset to be used for training.
-  --dataset_file data.cvs
-                        comma-separated-valued file containing our training
-                        data.
-  --rule_extractor name
-                        name of the extraction algorithm to be used to
-                        generate our rule set.
-  --grid_search         whether we want to do a grid search over our model's
-                        hyperparameters. If the results of a previous grid
-                        search are found in the provided output directory,
-                        then we will use those rather than starting a grid
-                        search from scratch. This means that turning this flag
-                        on will overwrite any hyperparameters you provide as
-                        part of your configuration (if any).
-  --output_dir path, -o path
-                        directory where we will dump our experiment's results.
-                        If not given, then we will use the same directory as
-                        our dataset.
-  --randomize, -r       If set, then the random seeds used in our execution
-                        will not be fixed and the experiment will be
-                        randomized. By default, otherwise, all experiments are
-                        run with the same seed for reproducibility.
-  --force_rerun {all,data_split,fold_split,grid_search,nn_train,rule_extraction}, -f {all,data_split,fold_split,grid_search,nn_train,rule_extraction}
-                        If set and we are given as output directory the
-                        directory of a previous run, then we will overwrite
-                        any previous work starting from the provided stage
-                        (and all subsequent stages of the experiment) and redo
-                        all computations. Otherwise, we will attempt to use as
-                        much as we can from the previous run.
-  --profile             prints out profiling statistics of the rule-extraction
-                        in terms of low-level calls used for the extraction
-                        method.
-  -d, --debug           starts debug mode in our program.
-  -p param_name=value param_name=value, --param param_name=value param_name=value
-                        Allows the passing of a config param that will
-                        overwrite anything passed as part of the config file
-                        itself.
+python run_experiment.py --config experiment_configs/<dataset_name>/<method_name>_best_config.yaml
 ```
-
 One can run the tool by manually inputting the dataset information as
 command-line arguments or by providing a YAML config containing the experiment
 parameterization as the following example:
@@ -257,12 +194,6 @@ extractor_params:
     # If 0 or null, then no restriction is applied.
     # For original REM-D: set to null
     max_number_of_samples: null
-
-    ###########################################
-    # CG Solver parameters
-    ###########################################
-    # These parameters are specific to the Column Generation Solver  
-    
     
 # Where are we dumping our results. If not provided, it will default to the same
 # directory as the one containing the dataset.
