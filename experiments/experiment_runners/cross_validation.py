@@ -10,6 +10,7 @@ from model_training.train import load_model
 from remix.evaluate_rules.evaluate import evaluate, evaluate_estimator
 from remix.utils.resources import resource_compute
 from remix.rules.ruleset import Ruleset
+from aix360.algorithms.rbm.boolean_rule_cg import BooleanRuleCG
 
 
 def _deserialize_rules(path):
@@ -161,6 +162,28 @@ def cross_validate_re(manager):
                 num_workers=manager.EVALUATE_NUM_WORKERS,
                 multi_class=(len(manager.DATASET_INFO.output_classes) > 2),
             )
+        elif isinstance(surrogate, BooleanRuleCG):
+            with open(extracted_rules_file_path + ".txt", 'w') as f:
+                for rule in surrogate.ruleset:
+                    f.write(str(rule) + "\n")
+            logging.debug(
+                f'Evaluating rules extracted from '
+                f'fold {fold}/{manager.N_FOLDS} ({surrogate.ruleset.num_clauses()} '
+                f'rules with {surrogate.ruleset.num_terms()} different terms in them '
+                f'on {len(y_test)} test points)...'
+            )
+            re_results = evaluate(
+                ruleset=surrogate,
+                X_test=X_test,
+                y_test=y_test,
+                high_fidelity_predictions=np.argmax(
+                    nn_model.predict(X_test),
+                    axis=1
+                ) if (not regression) else nn_model.predict(X_test),
+                num_workers=manager.EVALUATE_NUM_WORKERS,
+                multi_class=(len(manager.DATASET_INFO.output_classes) > 2),
+            )
+
         else:
             # Else we are talking about a decision tree classifier in here
             # And actually evaluate them
@@ -234,7 +257,7 @@ def cross_validate_re(manager):
             )
 
         # Fill up our pretty table
-        if isinstance(surrogate, Ruleset):
+        if isinstance(surrogate, (Ruleset, BooleanRuleCG)):
             avg_rule_length = np.array(re_results['av_n_terms_per_rule'])
             avg_rule_length *= np.array(re_results['n_rules_per_class'])
             avg_rule_length = sum(avg_rule_length)

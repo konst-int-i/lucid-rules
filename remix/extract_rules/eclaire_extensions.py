@@ -5,6 +5,7 @@ import pandas as pd
 import sklearn
 from sklearn.preprocessing import MinMaxScaler
 from typing import *
+import shap
 
 from .utils import ModelCache
 from remix.logic_manipulator.merge import merge
@@ -28,10 +29,54 @@ class EclaireCart(EclaireBase):
         self.final_algorithm_name = "cart"
         self.intermediate_algorithm_name = "cart"
 
+class EclaireColumnGeneration(EclaireBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.final_algorithm_name = "cart"
+        self.intermediate_algorithm_name = "column_generation"
+
+
+class EclaireAgg(EclaireCart):
+    """
+    Uses aggregated gold standard as explanation baseline
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        pass
+        # self.expl_baseline = "gold"
+
+class EclaireCartInduce(EclaireCart):
+
+    def __init__(self, **kwargs):
+        pass
+
+
+
 class EclaireCartSampleWeighted(EclaireCart):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.case_weighting = True
+
+    def _experiment_setup(self, method="shap") -> None:
+        if method == "model_prob":
+            case_prob = self.model.predict(self.train_data)
+            case_diffs = np.abs(case_prob[:, 0] - case_prob[:, 1])
+            case_diffs_scaled = np.squeeze(
+                MinMaxScaler(feature_range=(0.2, 0.8)).fit_transform(X=case_diffs.reshape(-1, 1)))
+            # we want to put a higher weight on cases with a lower diff
+            self.case_weights = 1- case_diffs_scaled
+        elif method == "shap":
+            logging.info(f"Fitting shap deep explainer for case weighting...")
+            e = shap.DeepExplainer(self.model, self.train_data)
+            shap_values = e.shap_values(self.train_data)
+            shap_sample = np.sum(shap_values[0], axis=1)
+            shap_sample_scaled = np.squeeze(
+                MinMaxScaler(feature_range=(0.2, 0.8)).fit_transform(X=shap_sample.reshape(-1, 1))
+            )
+            self.case_weights = 1 - shap_sample_scaled
+        return None
+
+
 
 class EclaireHistCart(EclaireCart):
 
@@ -39,7 +84,7 @@ class EclaireHistCart(EclaireCart):
         super().__init__(**kwargs)
 
     def _preprocess_train(self):
-        self.train_data = bin_dataset(self.train_data, n_bins=255)
+        self.train_data = bin_dataset(self.train_data, n_bins=200)
 
 
 class EclaireCartPrune(EclaireCart):
