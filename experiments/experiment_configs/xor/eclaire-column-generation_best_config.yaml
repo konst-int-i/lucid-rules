@@ -5,12 +5,14 @@ extractor_params:
   ccp_prune: true
   estimators: 10
   initial_drop_percent: null
+  initial_min_cases: 2
   intermediate_drop_percent: 0
+  intermediate_end_min_cases: 2
   max_number_of_samples: null
   merge_repeated_terms: true
-  min_cases: 30
+  min_cases: 2
   min_confidence: 0
-  num_workers: 1
+  num_workers: 4
   preemptive_redundant_removal: false
   rule_score_mechanism: Accuracy
   threshold_decimals: null
@@ -68,9 +70,9 @@ hyperparameters:
   skip_freq: 0
 initialisation_trial_metric: accuracy
 initialisation_trials: 1
-n_folds: 5
+n_folds: 1
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0
-rule_extractor: DeepRED
+rule_extractor: eclaire-column-generation
 rule_score_mechanism: Majority

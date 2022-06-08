@@ -1,24 +1,14 @@
-dataset_file: datasets/SYNTHETIC/data.csv
-dataset_name: SYNTHETIC
+dataset_file: datasets/MAGIC/data.csv
+dataset_name: MAGIC
 extractor_params:
-  block_size: 1
-  ccp_prune: true
-  estimators: 10
-  initial_drop_percent: null
-  intermediate_drop_percent: 0
-  max_number_of_samples: null
-  merge_repeated_terms: true
-  min_cases: 30
-  min_confidence: 0
-  num_workers: 1
-  preemptive_redundant_removal: false
-  rule_score_mechanism: Accuracy
-  threshold_decimals: null
-  top_k_activations: 1
-  tree_extraction_algorithm_name: random_forest
-  trials: 1
-  winnow_features: true
-  winnow_intermediate: true
+  cnf: True,
+  lambda0: 0.001
+  lambda1: 0.0001
+  iterMax: 20 # solver iterations
+  num_thresh: 9 # number of quantile thresholds to binarize variables
+  negations: True
+  verbose: False
+  silent: False
 force_rerun: null
 grid_search_params:
   activations:
@@ -49,15 +39,15 @@ grid_search_params:
   - sigmoid_xentr
   metric_name: accuracy
 hyperparameters:
-  activation: tanh
-  batch_size: 16
+  activation: relu
+  batch_size: 32
   compress_mechanism: null
   compression_params:
     initial_sparsity: 0.0
     pruning_epochs: 20
     target_sparsity: 0.75
   dropout_rate: 0.0
-  epochs: 150
+  epochs: 200
   last_activation: softmax
   layer_units:
   - 64
@@ -72,5 +62,5 @@ n_folds: 5
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0
-rule_extractor: DeepRED
+rule_extractor: cg-extract
 rule_score_mechanism: Majority

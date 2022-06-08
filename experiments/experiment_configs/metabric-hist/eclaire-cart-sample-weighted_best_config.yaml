@@ -1,20 +1,23 @@
-dataset_file: datasets/MB-GE-ER/data.csv
-dataset_name: MB-GE-ER
-evaluate_num_workers: 6
+dataset_file: datasets/MB-1004-GE-2Hist/data.csv
+dataset_name: MB-1004-GE-2Hist
 extractor_params:
   block_size: 1
   ccp_prune: true
-  estimators: 5
+  estimators: 10
   initial_drop_percent: null
+  initial_min_cases: 5
   intermediate_drop_percent: 0
-  merge_repeated_terms: false
-  min_cases: 4
-  num_workers: 1
+  intermediate_end_min_cases: 5
+  max_number_of_samples: null
+  merge_repeated_terms: true
+  min_cases: 5
+  min_confidence: 0
+  num_workers: 6
   preemptive_redundant_removal: false
   rule_score_mechanism: Accuracy
   threshold_decimals: null
   top_k_activations: 1
-  tree_extraction_algorithm_name: C5.0
+  tree_extraction_algorithm_name: random_forest
   trials: 1
   winnow_features: true
   winnow_intermediate: true
@@ -57,17 +60,18 @@ hyperparameters:
     target_sparsity: 0.75
   dropout_rate: 0.0
   epochs: 50
-  last_activation: softmax
+  last_activation: sigmoid
   layer_units:
   - 128
   - 16
   learning_rate: 0.001
-  loss_function: softmax_xentr
+  loss_function: sigmoid_xentr
+  skip_freq: 0
 initialisation_trial_metric: accuracy
 initialisation_trials: 1
 n_folds: 5
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0
-rule_extractor: REM-T
+rule_extractor: eclaire-cart-sample-weighted
 rule_score_mechanism: Majority

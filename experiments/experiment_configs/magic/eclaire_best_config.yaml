@@ -5,9 +5,9 @@ extractor_params:
   ccp_prune: true
   estimators: 10
   initial_drop_percent: null
-  initial_min_cases: null
+  initial_min_cases: 5
   intermediate_drop_percent: 0
-  intermediate_end_min_cases: null
+  intermediate_end_min_cases: 5
   max_number_of_samples: null
   merge_repeated_terms: true
   min_cases: 50
