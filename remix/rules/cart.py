@@ -140,6 +140,7 @@ def tree_to_ruleset(
     return merge(rules_set)
 
 
+
 def cart_rules(
     x,
     y,
@@ -230,8 +231,7 @@ def cart_rules(
         )
 
     dt.fit(x, y, sample_weight=sample_weight)
-
-    return tree_to_ruleset(
+    rules = tree_to_ruleset(
         dt.tree_,
         threshold_decimals=threshold_decimals,
         feature_names=x.columns,
@@ -240,6 +240,9 @@ def cart_rules(
         prior_rule_confidence=prior_rule_confidence,
         regression=regression,
     )
+    print(type(rules))
+    print(rules)
+    return rules
 
 def hist_boosting_rules(
         x,
