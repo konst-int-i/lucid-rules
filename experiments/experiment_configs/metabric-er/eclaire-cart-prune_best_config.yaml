@@ -1,16 +1,16 @@
-dataset_file: datasets/XOR/data.csv
-dataset_name: XOR
+dataset_file: datasets/MB-GE-ER/data.csv
+dataset_name: MB-GE-ER
 extractor_params:
   block_size: 1
   ccp_prune: true
   estimators: 10
   initial_drop_percent: null
-  initial_min_cases: 2
+  initial_min_cases: 5
   intermediate_drop_percent: 0
-  intermediate_end_min_cases: 2
+  intermediate_end_min_cases: 5
   max_number_of_samples: null
   merge_repeated_terms: true
-  min_cases: 2
+  min_cases: 5
   min_confidence: 0
   num_workers: 4
   preemptive_redundant_removal: false
@@ -59,20 +59,19 @@ hyperparameters:
     pruning_epochs: 20
     target_sparsity: 0.75
   dropout_rate: 0.0
-  epochs: 150
+  epochs: 50
   last_activation: softmax
   layer_units:
-  - 64
-  - 32
+  - 128
   - 16
   learning_rate: 0.001
   loss_function: softmax_xentr
   skip_freq: 0
 initialisation_trial_metric: accuracy
 initialisation_trials: 1
-n_folds: 2
+n_folds: 5
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0
-rule_extractor: eclaire
+rule_extractor: eclaire-cart-prune
 rule_score_mechanism: Majority

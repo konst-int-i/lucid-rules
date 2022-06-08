@@ -12,6 +12,7 @@ class TermOperator(Enum):
     """
     GreaterThan = '>'
     LessThanEq = '<='
+    Equal = '=='
 
     def __str__(self):
         return self.value
@@ -29,6 +30,8 @@ class TermOperator(Enum):
             return lambda x, y: x > y
         if self is self.LessThanEq:
             return lambda x, y: np.logical_or(np.isclose(x, y), (x < y))
+        if self is self.Equal:
+            return lambda x,y: np.equal(x,y)
 
     def most_general_value(self, values):
         # Given a list of values, return the most general depending on the

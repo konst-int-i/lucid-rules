@@ -1,26 +1,14 @@
 dataset_file: datasets/XOR/data.csv
 dataset_name: XOR
 extractor_params:
-  block_size: 1
-  ccp_prune: true
-  estimators: 10
-  initial_drop_percent: null
-  initial_min_cases: 2
-  intermediate_drop_percent: 0
-  intermediate_end_min_cases: 2
-  max_number_of_samples: null
-  merge_repeated_terms: true
-  min_cases: 2
-  min_confidence: 0
-  num_workers: 4
-  preemptive_redundant_removal: false
-  rule_score_mechanism: Accuracy
-  threshold_decimals: null
-  top_k_activations: 1
-  tree_extraction_algorithm_name: random_forest
-  trials: 1
-  winnow_features: true
-  winnow_intermediate: true
+  cnf: True,
+  lambda0: 0.001
+  lambda1: 0.0001
+  iterMax: 25 # solver iterations
+  num_thresh: 9 # number of quantile thresholds to binarize variables
+  negations: True
+  verbose: False
+  silent: False
 force_rerun: null
 grid_search_params:
   activations:
@@ -70,9 +58,9 @@ hyperparameters:
   skip_freq: 0
 initialisation_trial_metric: accuracy
 initialisation_trials: 1
-n_folds: 2
+n_folds: 5
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0
-rule_extractor: eclaire
+rule_extractor: cg-extract
 rule_score_mechanism: Majority

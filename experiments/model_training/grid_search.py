@@ -112,6 +112,10 @@ def grid_search(X, y, manager=None, X_val=None, y_val=None, num_outputs=2):
             "learning_rates",
             [1e-3, 1e-4],
         )
+        l2_regularizations = manager.GRID_SEARCH_PARAMS.get(
+            "l2_reg",
+            [0.0, 0.001]
+        )
         layer_sizes = manager.GRID_SEARCH_PARAMS.get(
             "layer_sizes",
             ([128, 64, 32], [64, 32]),
@@ -136,6 +140,7 @@ def grid_search(X, y, manager=None, X_val=None, y_val=None, num_outputs=2):
             [128, 64, 32],
             [64, 32],
         )
+        l2_regularizations = [0.001]
         activations = ["tanh", "elu", "relu"]
         loss_functions = ["softmax_xentr", "sigmoid_xentr"]
         dropout_rates = [0, 0.2]
@@ -151,6 +156,7 @@ def grid_search(X, y, manager=None, X_val=None, y_val=None, num_outputs=2):
         loss_function=loss_functions,
         learning_rate=learning_rates,
         dropout_rate=dropout_rates,
+        l2_reg=l2_regularizations
     )
 
     model = CustomMetricKerasClassifier(

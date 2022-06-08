@@ -60,6 +60,7 @@ def model_fn(
     decay_rate=1,
     decay_steps=None,
     staircase=False,
+    l2_reg=0.0,
 ):
     """
     Model function to construct our TF model for learning our given task.
@@ -146,6 +147,7 @@ def model_fn(
         activation=(
             None if (last_activation in loss_function) else last_activation
         ) if last_activation else None,
+        kernel_regularizer=tf.keras.regularizers.l2(l2_reg)
     )(net)
 
     # Compile Model
