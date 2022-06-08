@@ -172,10 +172,6 @@ def C5(
         x=x,
         y=y,
         rules=True,
-        # weights=1,
-        # weights=np.zeros(x.shape[0]),
-        # weights=None,
-        # weights=case_weights,
         control=C50.C5_0Control(
             winnow=winnow,
             minCases=min_cases,
@@ -185,7 +181,6 @@ def C5(
             earlyStopping=True,
         ),
         trials=trials,
-
     )
     C5_rules_str = C5_model.rx2('rules')[0]
     C5_rules = _parse_C5_rule_str(
