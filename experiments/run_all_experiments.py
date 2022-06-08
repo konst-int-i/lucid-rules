@@ -258,8 +258,6 @@ def _write_joint_results(run_folder: Path) -> pd.DataFrame:
         result_path = f"{run_folder}/{single_exp}/cross_validation/n_folds/rule_extraction/{subdir}/results.csv"
         exp_df = pd.read_csv(result_path)
         exp_df  = exp_df.loc[:, ~exp_df.columns.str.contains('^Unnamed')]
-        # exp_df.loc[:, "dataset"] = single_exp.split("_")[0]
-        # exp_df.loc[:, "model"] = single_exp.split("_")[1]
 
         exp_df.insert(0, "dataset", single_exp.split("_")[0])
         exp_df.insert(0, "model", single_exp.split("_")[1])
@@ -276,8 +274,11 @@ def aggregate_experiments(summary_df: pd.DataFrame, run_folder: Path) -> None:
     """
     Calculates relevant aggregate metrics for experiment results across seeds
     """
-
-    summary_df.loc[:, "total_rules"] = summary_df["re_n_rules_per_class"].apply(lambda x: x.split(",")[0][1:]).astype("int")
+    # summary_df["re_n_rules_per_class"] = summary_df["re_n_rules_per_class"].astype("str")
+    try:
+        summary_df.loc[:, "total_rules"] = summary_df["re_n_rules_per_class"].apply(lambda x: x.split(",")[0][1:]).astype("int")
+    except:
+        summary_df.loc[:, "total_rules"] = 0
 
     result_agg = summary_df.groupby(["model", "dataset"], as_index=False).agg({
         "nn_loss": ["mean", "std"],
