@@ -21,7 +21,7 @@ Additionally, we implement a Column Generation Rule Extractor as a novel type of
 implementation of which is heavily based on the [AIX360 implementation](https://github.com/Trusted-AI/AIX360). 
 
 ## Setup
-In order to install this library,  you will need the following requirements
+In order to install this library, you will need the following requirements
 first:
 - `python` 3.5 – 3.8
 - `pip` 19.0 or later
@@ -59,8 +59,9 @@ python setup.py install --user
 
 For a full results run, you can also run the full experiment:  
 ```bash
-python run_all_experiments
+python run_all_experiments.py
 ```
+Where the results will be written to the `experiments_results.yml` file
 Note that the configurations of which model and datasets should be run can be updated in `experiments/all_experiments.yml`
 
 To recreate any of the results reported this dissertation, you can call
