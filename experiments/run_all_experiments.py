@@ -14,8 +14,10 @@ import click
 from typing import *
 from experiments.model_training.train import load_model
 from experiments.experiment_runners.cross_validation import _deserialize_rules
-from remix.explainability.rules import PipelineExplainer
+from remix.explainability.explainer import PipelineExplainer
 from pathlib import Path
+from remix.rules.ruleset import Ruleset
+from remix.rules.column_generation import BooleanRuleCG
 import tensorflow as tf
 
 @click.command()
@@ -184,6 +186,7 @@ def main(**kwargs):
         else:
             # if we aren't rerunning the training and extraction, load latest from experiment outputs
             exp_dir = sorted(os.listdir("experiment_results/"))[-1]
+            # exp_dir = "05_26_16_14_08_c50_agg_vs_shap"
             run_dir = Path("experiment_results").joinpath(exp_dir)
             output_dir = run_dir.joinpath(f"{experiment['dataset']}_{experiment['method']}")
             assert os.path.exists(output_dir), f"Directory {output_dir} does not exist - check that you " \
@@ -201,24 +204,34 @@ def main(**kwargs):
         # STEP 2 - RUN EXPLAINABILITY MODULE #
         ######################################
         if "explain" in config.pipeline:
-            n_folds = len(models)
             for fold, (model, ruleset) in enumerate(zip(models, rulesets)):
 
-                # print(model, ruleset[0])
-                explainer = PipelineExplainer(config, model, ruleset[0])
-                rule_ranking = explainer.rule_feature_ranking(top_n=20)
-                shap_ranking = explainer.shap_feat_ranking(top_n=20, x_train=x_train_folds[fold],
-                                                           x_test=x_test_folds[fold])
+                if isinstance(ruleset[0], Ruleset):
+                    explainer = PipelineExplainer(config, model, ruleset[0], experiment['method'])
+                elif isinstance(ruleset[0], BooleanRuleCG):
+                    explainer = PipelineExplainer(config, model, ruleset[0].ruleset, experiment['method'])
+                rule_ranking = explainer.rule_feature_ranking(top_n=None)
+                if experiment['method'] in ["eclaire", "eclaire-cart"]:
+                    original_ranking = explainer.original_feat_ranking(top_n=None, x_train=x_train_folds[fold],
+                                                               x_test=x_test_folds[fold], method="ig")
+                else: # gold_standard otherwise
+                    original_ranking = explainer.gold_standard_ranking(top_n=None, x_train=x_train_folds[fold],
+                                                                        x_test=x_test_folds[fold])
                 # plot both rankings
                 plot_dir = result_path.parent.joinpath("figures")
                 if not os.path.exists(plot_dir):
                     os.mkdir(plot_dir)
                 plot_file = plot_dir.joinpath(f"importances_fold_{fold+1}.png")
-                explainer.plot_rankings(rule_ranking=rule_ranking, original_ranking=shap_ranking, save_path=plot_file)
-                tau, p_value = explainer.ranking_similarity(rule_ranking, shap_ranking)
+                explainer.plot_rankings(rule_ranking=rule_ranking, original_ranking=original_ranking,
+                                        save_path=plot_file, top_n=20)
+                tau, p_value = explainer.rank_correlation(rule_ranking, original_ranking, method="tau")
+                weighted_tau, _ = explainer.rank_correlation(rule_ranking, original_ranking, method="weighted_tau")
+                # rho, p_value = explainer.rank_correlation(rule_ranking, original_ranking, method="rho")
+                rbo_score = explainer.rank_order(rule_ranking, original_ranking, method="rbo")
                 # log in results
                 result_df.loc[result_df["fold"] == fold + 1, "tau"] = tau
-                result_df.loc[result_df["fold"] == fold + 1, "ranking_p_value"] = p_value
+                result_df.loc[result_df["fold"] == fold + 1, "weighted_tau"] = weighted_tau
+                result_df.loc[result_df["fold"] == fold + 1, "rbo_score"] = rbo_score
         result_df.to_csv(result_path)
 
     summary_df = _write_joint_results(run_folder=Path(run_dir))
@@ -236,7 +249,7 @@ def _write_joint_results(run_folder: Path) -> pd.DataFrame:
     Returns:
         None: writes the table as table ``results_summary.csv`` into results folder
     """
-    exp_runs = [exp for exp in os.listdir(run_folder) if exp not in ["results_summary.csv", "results_aggregated.csv"]]
+    exp_runs = [exp for exp in os.listdir(run_folder) if exp not in ["results_summary.csv", "results_aggregated.csv", "results_agg.csv"]]
 
     # iterate through all runs
     dfs = []
@@ -276,7 +289,9 @@ def aggregate_experiments(summary_df: pd.DataFrame, run_folder: Path) -> None:
         "re_fid": ["mean", "std"],
         "re_auc": ["mean", "std"],
         "total_rules": ["mean", "std"],
-        "tau": ["mean", "std"]
+        "tau": ["mean", "std"],
+        "weighted_tau": ["mean", "std"],
+        "rbo_score": ["mean", "std"]
     })
 
     result_agg.to_csv(f"{run_folder}/results_agg.csv")
@@ -288,7 +303,7 @@ def _load_data_splits(dataset: str, output_dir: Path):
         indices = f.read().split("\n")
 
     data_mapping = {"xor": "XOR", "metabric-er": "MB-GE-ER", "metabric-hist": "MB-1004-GE-2Hist",
-                    "synthetic": "SYNTHETIC"}
+                    "synthetic": "SYNTHETIC", "magic": "MAGIC", "diabetes": "DIABETES"}
 
     df = pd.read_csv(f"datasets/{data_mapping[dataset]}/data.csv")
     # note: last column is the target

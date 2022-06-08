@@ -24,7 +24,7 @@ from . import dataset_configs
 from remix.extract_rules.pedagogical import extract_rules as pedagogical
 from remix.extract_rules.rem_t import extract_rules as rem_t
 from remix.extract_rules.rem_d import extract_rules as rem_d
-# from remix.extract_rules.eclaire import extract_rules as eclaire
+from remix.extract_rules.cg_extract import extract_rules as cg_extract
 from remix.extract_rules.deep_red_c5 import extract_rules as deep_red_c5
 from remix.extract_rules.eclaire_exp_base import EclaireBase as eclaire
 from remix.extract_rules.eclaire_extensions import *
@@ -329,6 +329,7 @@ f
             "crem-d",
             "deepred",
             "deepred_c5",
+            "cg-extract",
             # "eclaire",
             # "erem-d",
             "rem-d",
@@ -345,12 +346,10 @@ f
             if name == "rem-d":
                 run_fn = rem_d
                 real_name = "REM-D"
-            # elif name in ["erem-d", "eclaire"]:
-            #     run_fn = eclaire
-            #     real_name = "ECLAIRE"
-            elif name in ["eclaire-weighted", "eclaire_weighted"]:
-                run_fn = eclaire_weighted().extract_rules
-                real_name = "ECLAIRE_WEIGHTED"
+
+            elif name in ["cg_extract", "cg-extract"]:
+                run_fn = cg_extract
+                real_name = "CG_EXTRACT"
             elif name in ["deepred", "deepred_c5"]:
                 run_fn = deep_red_c5
                 real_name = "DeepRED_C5"
@@ -392,7 +391,10 @@ f
             )
 
         if name in ["eclaire",
+                    "eclaire-agg",
+                    "eclaire-sample-weighted",
                     "eclaire-cart",
+                    "eclaire-column-generation",
                     "eclaire-cart-sample-weighted",
                     "eclaire-hist-cart",
                     "eclaire-cart-prune"
@@ -408,7 +410,15 @@ f
             if name in ["eclaire"]:
                 run_obj = eclaire
                 real_name = "ECLAIRE"
-
+            if name in ["eclaire-sample-weighted"]:
+                run_obj = EclaireWeighted
+                real_name = "ECLAIRE_WEIGHTED"
+            if name in ["eclaire-agg"]:
+                run_obj = EclaireAgg
+                real_name = "ECLAIRE_AGG"
+            if name in ["eclaire-column-generation"]:
+                run_obj = EclaireColumnGeneration
+                real_name = "ECLAIRE_CG"
             if name in ["eclaire-cart"]:
                 run_obj = EclaireCart
                 real_name = "ECL_CART"

@@ -4,6 +4,8 @@ Methods used for evaluating the performance of a given set of rules.
 
 import numpy as np
 import sklearn
+from remix.rules.ruleset import Ruleset
+from remix.rules.column_generation import BooleanRuleCG
 
 from . import metrics
 
@@ -74,7 +76,10 @@ def evaluate(
         fid = None
 
     # Compute Comprehensibility
-    comprehensibility_results = metrics.comprehensibility(ruleset)
+    if isinstance(ruleset, Ruleset):
+        comprehensibility_results = metrics.comprehensibility(ruleset)
+    elif isinstance(ruleset, BooleanRuleCG):
+        comprehensibility_results = metrics.comprehensibility(ruleset.ruleset)
 
     # And wrap them all together
     if ruleset.regression:

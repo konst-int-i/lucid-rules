@@ -21,6 +21,7 @@ from remix.logic_manipulator.merge import merge
 from remix.logic_manipulator.substitute_rules import clausewise_substitute
 from remix.rules.C5 import C5
 from remix.rules.cart import cart_rules, random_forest_rules, hist_boosting_rules
+from remix.rules.column_generation import column_generation_rules
 from remix.rules.rule import Rule
 from remix.rules.ruleset import Ruleset, RuleScoreMechanism
 from remix.utils.data_handling import stratified_k_fold_split
@@ -38,6 +39,7 @@ class EclaireBase(object):
                  model,
                  train_data,
                  train_labels,
+                 # test_data,
                  verbosity=logging.INFO,
                  last_activation=None,
                  threshold_decimals=None,
@@ -70,12 +72,14 @@ class EclaireBase(object):
                  case_weighting=False,
                  feature_weighting=False,
                  interaction_prune=True,
+                 expl_baseline="shap",
                  **kwargs,
                  ):
 
         self.model = model
         self.train_data = train_data
         self.train_labels = train_labels
+        # self.test_data = test_data
         self.verbosity = verbosity
         self.last_activation = last_activation
         self.threshold_decimals = threshold_decimals
@@ -108,6 +112,9 @@ class EclaireBase(object):
         self.case_weighting = case_weighting
         self.feature_weighting = feature_weighting
         self.interaction_prune = interaction_prune
+        self.case_weights = 1
+        self.expl_baseline = expl_baseline
+
 
     def extract_rules(
         self,
@@ -230,18 +237,12 @@ class EclaireBase(object):
 
         :returns Ruleset: the set of rules extracted from the given model.
         """
+
+        # Preprocess train data if required by experimental child class
         self._preprocess_train()
 
-        # First determine which rule extraction algorithm we will use in this
-        # setting
-        if self.case_weighting:
-            case_prob = self.model.predict(self.train_data)
-            case_diffs = np.abs(case_prob[:, 0] - case_prob[:, 1])
-            case_diffs_scaled = np.squeeze(MinMaxScaler(feature_range=(0, 1)).fit_transform(X=case_diffs.reshape(-1, 1)))
-            # we want to put a higher weight on cases with a lower diff
-            case_weights = 1-case_diffs_scaled
-        else:
-            case_weights=1
+        # Other experiment setup (to be overridden by child classes)
+        self._experiment_setup()
 
         if self.final_algorithm_name.lower() in ["c5.0", "c5", "see5"]:
             final_algo_call = C5
@@ -249,7 +250,7 @@ class EclaireBase(object):
                 winnow=self.winnow_features,
                 threshold_decimals=self.threshold_decimals,
                 trials=self.trials,
-                case_weights=case_weights
+                case_weights=self.case_weights
             )
             # If case weighting is true, determine case weights
             # Note - case weighting only supported by C50 so far
@@ -259,7 +260,7 @@ class EclaireBase(object):
                 threshold_decimals=self.threshold_decimals,
                 ccp_prune=self.ccp_prune,
                 max_depth=self.final_tree_max_depth,
-                sample_weight=case_weights,
+                sample_weight=self.case_weights,
             )
             if self.balance_classes:
                 final_algo_kwargs["class_weight"] = "balanced"
@@ -269,7 +270,14 @@ class EclaireBase(object):
                 threshold_decimals=self.threshold_decimals,
                 estimators=self.estimators,
                 max_depth=self.final_tree_max_depth,
-                sample_weight=case_weights
+                sample_weight=self.case_weights
+            )
+        elif self.final_algorithm_name.lower() == "column_generation":
+            final_algo_call = column_generation_rules
+            final_algo_kwargs = dict(
+                cnf = True,
+                lambda0 = 0.001,
+                lambda1 = 0.001
             )
         elif self.final_algorithm_name.lower() == "hist_boosting":
             final_algo_call = hist_boosting_rules
@@ -290,7 +298,7 @@ class EclaireBase(object):
                 winnow=self.winnow_intermediate,
                 threshold_decimals=self.threshold_decimals,
                 trials=self.trials,
-                case_weights=case_weights
+                case_weights=self.case_weights
             )
             if self.regression:
                 raise ValueError(
@@ -305,7 +313,7 @@ class EclaireBase(object):
                 ccp_prune=self.ccp_prune,
                 regression=self.regression,
                 max_depth=self.intermediate_tree_max_depth,
-                sample_weight=case_weights
+                sample_weight=self.case_weights
             )
             if self.balance_classes:
                 intermediate_algo_kwargs["class_weight"] = "balanced"
@@ -316,7 +324,14 @@ class EclaireBase(object):
                 estimators=self.estimators,
                 regression=self.regression,
                 max_depth=self.intermediate_tree_max_depth,
-                sample_weight=case_weights
+                sample_weight=self.case_weights
+            )
+        elif self.intermediate_algorithm_name.lower() == "column_generation":
+            intermediate_algo_call = column_generation_rules
+            intermediate_algo_kwargs = dict(
+                cnf = True,
+                lambda0 = 0.001,
+                lambda1 = 0.001
             )
         elif self.intermediate_algorithm_name.lower() == "hist_boosting":
             intermediate_algo_call = hist_boosting_rules
@@ -598,8 +613,25 @@ class EclaireBase(object):
                             serialized_clauses,
                         )
                     # And update our bar with only one step as we do not have
-                    # the granularity we do in the non-multi-process way
+                        # the granularity we do in the non-multi-process way
                     pbar.update(1)
+                    # new_rulesets = list(map(
+                    #     lambda x: _extract_rules_from_clause(
+                    #         clause=x[1],
+                    #         i=x[0],
+                    #         num_clauses=num_clauses,
+                    #         layer_idx=layer_idx,
+                    #         min_cases=self.min_cases,
+                    #         input_acts=input_acts,
+                    #         block_out_activations=block_out_activations,
+                    #         balance_classes=self.balance_classes,
+                    #         final_algorithm_name=self.final_algorithm_name,
+                    #         final_algo_kwargs=final_algo_kwargs,
+                    #         final_algo_call=final_algo_call,
+                    #         pbar=pbar
+                    #     ),
+                    #     enumerate(clauses),
+                    # ))
                 else:
                     # Else we will do it in this same process in one jump
                     new_rulesets = list(map(
@@ -647,6 +679,8 @@ class EclaireBase(object):
             regression=self.regression,
         )
 
+    def _experiment_setup(self) -> None:
+        pass
 
     def _preprocess_train(self) -> None:
         pass
@@ -716,6 +750,7 @@ def _extract_rules_from_clause(clause,
     )
     if pbar:
         pbar.update(1 / num_clauses)
+
     return new_rules
 
 
