@@ -58,7 +58,7 @@ hyperparameters:
   skip_freq: 0
 initialisation_trial_metric: accuracy
 initialisation_trials: 1
-n_folds: 5
+n_folds: 1
 output_dir: experiment_results
 random_seed: 42
 rule_elimination_percent: 0

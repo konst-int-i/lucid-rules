@@ -4,7 +4,7 @@ that test for faithfulness, and stability
 """
 
 import os
-from remix.utils.config import Config
+from lucid.utils.config import Config
 from sklearn.model_selection import ParameterGrid
 from run_experiment import run_experiment
 import logging
@@ -14,10 +14,10 @@ import click
 from typing import *
 from experiments.model_training.train import load_model
 from experiments.experiment_runners.cross_validation import _deserialize_rules
-from remix.explainability.explainer import PipelineExplainer
+from lucid.explainability.explainer import PipelineExplainer
 from pathlib import Path
-from remix.rules.ruleset import Ruleset
-from remix.rules.column_generation import BooleanRuleCG
+from lucid.rules.ruleset import Ruleset
+from lucid.rules.column_generation import BooleanRuleCG
 import tensorflow as tf
 
 @click.command()

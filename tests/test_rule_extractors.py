@@ -9,12 +9,12 @@ import pytest
 import sklearn
 import tensorflow as tf
 
-from remix import deep_red_c5
-from remix import eclaire
-from remix import pedagogical
-from remix import rem_d
-from remix import rem_t
-from remix.utils.data_handling import stratified_k_fold_split
+from lucid import deep_red_c5
+from lucid import eclaire
+from lucid import pedagogical
+from lucid import rem_d
+from lucid import rem_t
+from lucid.utils.data_handling import stratified_k_fold_split
 
 ################################################################################
 ## Global Variables

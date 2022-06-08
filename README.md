@@ -80,7 +80,7 @@ trained on a **classification** task. To do this, you can import the following
 method once you have installed this package as instructed in the setup:
 
 ```python
-from remix import eclaire # Or rem_d, pedagogical, rem_t, deep_red_c5
+from lucid import eclaire # Or rem_d, pedagogical, rem_t, deep_red_c5
 # Read data from some source
 X_train, y_train = ...
 # Train a Keras model on this data
@@ -108,7 +108,7 @@ a variety of hyper-parameters (e.g., the number of minimum samples required for
 making a new split in a decision tree can be passed via the `min_cases`
 arguments or the number of threads to use `num_workers`). For a full list of the
 hyper-parameters supported for a specific method, together with their semantics,
-please refer to that method's own documentation in [remix/extract_rules](remix/extract_rules).
+please refer to that method's own documentation in [remix/extract_rules](lucid/extract_rules).
 
 ## Visualizing Rule Sets
 
