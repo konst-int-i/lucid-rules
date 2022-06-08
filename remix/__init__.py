@@ -3,6 +3,7 @@ from remix.rules import *
 from remix.logic_manipulator import *
 from remix.data import *
 from remix.visualization import *
+from remix.explainability import *
 
 import remix.extract_rules.pedagogical as pedagogical
 import remix.extract_rules.rem_t as rem_t
