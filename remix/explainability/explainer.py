@@ -10,6 +10,7 @@ from pathlib import Path
 import shap
 from scipy import stats
 from box import Box
+from remix.explainability.ig import IGExplainer
 from collections import Counter
 
 
@@ -19,10 +20,12 @@ class PipelineExplainer(object):
     Object containing multiple explainability utils for the ruleset and the
     original model
     """
-    def __init__(self, config, dnn_model, ruleset):
-
+    def __init__(self, config, dnn_model, ruleset, method):
+        self.config = config
         self.model = dnn_model
         self.ruleset = ruleset
+        self.method = method
+
 
 
     def rule_feature_ranking(self, as_pct:bool=True, top_n: int = None) -> pd.Series:
@@ -50,25 +53,11 @@ class PipelineExplainer(object):
         features = list(set(terms))
         clause_counter = {} # count clauses that contain a term for each feature
         all_clauses = flatten([list(rule.premise) for rule in self.ruleset.rules])
-        nested_clauses = [[term.variable for term in clause.terms] for clause in all_clauses]
-        # for feat in features:
-        #     clause_count = 0
-        #     # iterate through all terms in clauses
-        #     for clause in nested_clauses:
-        #         if feat in clause:
-        #             clause_count += 1
-        #     clause_counter[feat] = clause_count
-        # clause_df = pd.Series(data=list(clause_counter.values()), index=list(clause_counter.keys()), name="clauses")
-        #
-        # score_df = pd.merge(score_df, clause_df, left_index=True, right_index=True)
 
         score_df["term_ratio"] = score_df.terms / score_df.terms.sum()
-        # score_df["clause_ratio"] = score_df.clauses / len(all_clauses)
         # # weight the term ratio by confidence
         score_df["term_ratio_weighted"] = score_df["term_ratio"] * score_df["conf"]
         score_df["feat_importance"] = score_df["term_ratio"] * score_df["conf"]
-        # # calculate as pct
-        # score_df["term_ratio_pct"] = score_df["term_ratio"] / score_df["term_ratio"].sum()
         score_df["feat_importance_pct"] = score_df["feat_importance"] /score_df["feat_importance"].sum()
         score_df.sort_values(by="feat_importance", ascending=False, inplace=True)
 
@@ -81,26 +70,48 @@ class PipelineExplainer(object):
         importance.name = "rules"
         return importance
 
-        # get total number of terms in ruleset
+    def calc_shap_values(self, x_train: pd.DataFrame, x_test: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        e = shap.DeepExplainer(self.model, x_train.to_numpy())
+        shap_values = e.shap_values(x_test.to_numpy(), check_additivity=False) # note - this changed
+        shap_value_df = pd.DataFrame(data=shap_values[0], columns=x_train.columns)
+        return shap_value_df
 
 
-        # decision_vars = [elem.variable for elem idn list(self.ruleset.get_terms_from_rule_premises())]
-        # var_count = Counter(decision_vars)
-        # rule_count = pd.Series(data=list(var_count.values()),
-        #                        index=list(var_count.keys())).sort_values(ascending=False)
-        #
-        # if as_pct:
-        #     rule_count /= rule_count.sum()
-        #
-        # if top_n is not None:
-        #     rule_count = rule_count[:top_n]
-        #
-        # rule_count.name = "rules"
-        # return rule_count
+    def calc_ig_values(self, x_test: pd.DataFrame, **kwargs):
+        ig_deep = IGExplainer(model=self.model, type=None)
+        ig_values = ig_deep.ig_values(x_test.to_numpy())
+        ig_value_df = pd.DataFrame(data=ig_values, columns=x_test.columns)
+        # scale such that the feature importance adds up to 1
+        scale_factor = ig_value_df.abs().mean().sum()
+        ig_value_df /= scale_factor
+        return ig_value_df
 
 
-    def shap_feat_ranking(self, x_train, x_test, as_pct: bool=True, top_n: int = None,
-                          ) -> pd.Series:
+    def gold_standard_ranking(self, x_train: pd.DataFrame, x_test: pd.DataFrame, as_pct: bool=True, top_n: int = None) -> pd.Series:
+        """
+
+        Args:
+            x_train:
+            as_pct:
+            top_n:
+
+        Returns:
+
+        """
+        shap_value_df = self.calc_shap_values(x_train, x_test)
+        ig_value_df = self.calc_ig_values(x_test)
+        gold_ranking = self.aggregate_rankings(ig_value_df, shap_value_df, x_train).squeeze()
+        gold_ranking = gold_ranking.sort_values(ascending=False)
+        gold_ranking.name = "original"
+
+        if as_pct:
+            gold_ranking /= gold_ranking.sum()
+        if top_n is not None:
+            gold_ranking = gold_ranking[:top_n]
+        return gold_ranking
+
+    def original_feat_ranking(self, x_train: pd.DataFrame, x_test: pd.DataFrame, method: str = "shap", as_pct: bool=True, top_n: int = None,
+                              ) -> pd.Series:
         """
         Returns feature importance ranking of the original model based on shapley values
         Args:
@@ -110,18 +121,18 @@ class PipelineExplainer(object):
         Returns:
         """
         logging.info("Fitting Shap Deep Explainer")
-        # e = shap.DeepExplainer(self.model, x_train[:1000].to_numpy())
-        e = shap.DeepExplainer(self.model, x_train.to_numpy())
-        shap_values = e.shap_values(x_test.to_numpy())
-        shap_rank = pd.Series(data=np.abs(shap_values[0]).sum(axis=0), index=x_test.columns)
-        shap_rank = shap_rank.sort_values(ascending=False)
+        if method == "shap":
+            attr_values = self.calc_shap_values(x_train=x_train, x_test=x_test)
+        elif method == "ig":
+            attr_values = self.calc_ig_values(x_test=x_test)
+        rank = attr_values.abs().mean(axis=0).sort_values(ascending=False)
         if as_pct:
-            shap_rank /= shap_rank.sum()
+            rank /= rank.sum()
 
-        shap_rank.name = "original"
-        return shap_rank
+        rank.name = "original"
+        return rank
 
-    def plot_rankings(self, rule_ranking: pd.Series, original_ranking: pd.Series, save_path: str, plot_top: int = 20,
+    def plot_rankings(self, rule_ranking: pd.Series, original_ranking: pd.Series, save_path: str, top_n: int = 20,
                       ):
         """
         Given two feature rankings, we write a bar plot of both to the output
@@ -133,26 +144,52 @@ class PipelineExplainer(object):
         Returns:
 
         """
-        joint_df = rule_ranking.to_frame().join(original_ranking)
-        joint_df = joint_df.reset_index().rename({"index": "Feature"}, axis=1)
+        joint_df = self.join_rankings(original_ranking, rule_ranking, top_n)
+
         plot_df = pd.melt(joint_df, value_vars=["original", "rules"], id_vars=["Feature"])
-        if plot_top is not None:
-            plot_df = plot_df.iloc[:, :plot_top]
         plot_df = plot_df.rename({"value": "% Rank", "variable": "Extraction"}, axis=1)
         fig, ax = plt.subplots()
+        sns.set_theme(style="whitegrid", palette="Paired", font_scale=1)
         sns.barplot(data=plot_df, x="% Rank", y="Feature", hue="Extraction", ax=ax)
         fold = int(str(save_path)[-5])
-        plt.title(f"Feature Importances - Fold {fold}")
+        plt.title(f"{self.method} - Feature Importances - Fold {fold}")
         plt.savefig(save_path)
         plt.show()
 
-    def aggregate_rankings(self):
+    def join_rankings(self, original_ranking: pd.Series, rule_ranking: pd.Series, top_n: int=20):
+        rule_plot = rule_ranking.sort_values(ascending=False).to_frame().iloc[:top_n]
+        original_plot = original_ranking.sort_values(ascending=False).to_frame().iloc[:top_n]
+        joint_df = rule_plot.merge(original_plot, how="outer", left_index=True, right_index=True, validate="1:1")
+        joint_df = joint_df.fillna(0).sort_values(by=["rules", "original"], ascending=False)
+        scale_pct = lambda x,col :  x[col]/x[col].sum()
+        joint_df["rules"] = scale_pct(joint_df, "rules")
+        joint_df["original"] = scale_pct(joint_df, "original")
+        joint_df = joint_df.reset_index().rename({"index": "Feature"}, axis=1)
+        return joint_df
+
+
+    def aggregate_rankings(self, rank_1: pd.DataFrame, rank_2: pd.DataFrame, x_train):
         """
 
         Returns:
 
         """
-        pass
+        # express both rankings in terms of absolute % contribution for each sample
+        row_scale_matrix = lambda df: df.abs().divide(df.abs().sum(axis=1), axis="rows")
+        rank_1 = row_scale_matrix(rank_1)
+        rank_2 = row_scale_matrix(rank_2)
+        importances = []
+        for feat_idx in range(rank_1.to_numpy().shape[1]):
+            a = rank_1.iloc[:, feat_idx]
+            b = rank_2.iloc[:, feat_idx]
+            importances.append(self.euclidean_importance(a,b))
+
+        agg_df = pd.DataFrame(data=importances,
+                              index=x_train.columns).rename({0: "importance"}, axis=1)
+
+        # scale importances to sum to 1
+        agg_df["importance"] /= agg_df["importance"].sum()
+        return agg_df
 
     def euclidean_importance(self, a, b):
         """
@@ -177,17 +214,20 @@ class PipelineExplainer(object):
 
         """
         # merge such that indeces are aligned
-        valid_methods = ["tau", "rho"]
+        valid_methods = ["tau", "rho", "weighted_tau"]
         assert method in valid_methods, f"Invalid method, select one of {valid_methods}"
 
-        merge_rank = rule_ranking.to_frame().join(original_ranking)
+        merge_rank = self.join_rankings(original_ranking, rule_ranking)
 
         if method == "tau":
             corr, p_value = stats.kendalltau(merge_rank["rules"], merge_rank["original"])
-            logging.info(f"Kendall's tau: {corr}; p-value: {p_value}")
+            logging.info(f"Kendall's tau: {np.round(corr, 4)}")
+        elif method == "weighted_tau":
+            corr, p_value = stats.weightedtau(merge_rank["rules"], merge_rank["original"])
+            logging.info(f"Weighted Tau: {np.round(corr, 4)}")
         elif method == "rho":
             corr, p_value = stats.spearmanr(merge_rank["rules"], merge_rank["original"])
-            logging.info(f"Spearman Rho: {corr}; p-value: {p_value}")
+            logging.info(f"Spearman Rho: {np.round(corr, 4)}")
         corr = np.round(corr, 5)
         p_value = np.round(p_value, 5)
 
@@ -195,7 +235,7 @@ class PipelineExplainer(object):
 
         return corr, p_value
 
-    def rank_order(self, rule_ranking: pd.Series, original_ranking: pd.Series, method="rbo") -> float:
+    def rank_order(self, rule_ranking: pd.Series, original_ranking: pd.Series, method="rbo", top_n: int=15) -> float:
         """
         Calculates an evaluation metric for two independent ranked lists, only looking at the
         ranked order of features, not the magnitude of their respective ranking metrics
@@ -207,13 +247,18 @@ class PipelineExplainer(object):
         Returns:
 
         """
+        # rankings = self.join_rankings(rule_ranking=rule_ranking, original_ranking=original_ranking, top_n=15)
+        rules = rule_ranking.index.to_list()
+        original = original_ranking.index.to_list()
+        original_filtered = [elem for elem in original if elem in rules]
+
         if method == "rbo":
-            rank_score = np.round(self.rbo(rule_ranking.index.to_list(), original_ranking.index.to_list()), 5)
+            rank_score = np.round(self.rbo(rules, original_filtered), 5)
             logging.info(f"Ranked Biased Overlap: {rank_score}")
 
         return rank_score
 
-    def rbo(self, list1, list2, p=0.5):
+    def rbo(self, list1, list2, p=0.8):
         """
         Rank biased overlap (RBO) implementation - heavily based on the following implementation
         on GitHub: https://gist.github.com/pjoshi30/cbf51bb9ec73da7040062591a030ceaa#file-rbo_ext-py
