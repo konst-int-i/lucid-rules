@@ -8,22 +8,22 @@ import os
 import sys
 import pandas as pd
 
-from remix.data.dataset_configs import (
+from lucid.data.dataset_configs import (
     get_data_configuration, AVAILABLE_DATASETS
 )
 from flexx import flx, ui
 from io import StringIO
 from pscript.stubs import window
 
-from remix.data.descriptors import DatasetDescriptor
-from remix.rules.ruleset import Ruleset
-from remix.visualization.feature_explorer import FeatureExplorerComponent
-from remix.visualization.prediction_explorer import PredictComponent
-from remix.visualization.rule_explorer import RuleExplorerComponent
-from remix.visualization.rule_list import RuleListComponent
-from remix.visualization.rule_statistics import RuleStatisticsComponent
-from remix.visualization.ruleset_loader import RulesetUploader
-from remix.visualization.uploader import FileUploader
+from lucid.data.descriptors import DatasetDescriptor
+from lucid.rules.ruleset import Ruleset
+from lucid.visualization.feature_explorer import FeatureExplorerComponent
+from lucid.visualization.prediction_explorer import PredictComponent
+from lucid.visualization.rule_explorer import RuleExplorerComponent
+from lucid.visualization.rule_list import RuleListComponent
+from lucid.visualization.rule_statistics import RuleStatisticsComponent
+from lucid.visualization.ruleset_loader import RulesetUploader
+from lucid.visualization.uploader import FileUploader
 
 
 ################################################################################
@@ -434,7 +434,7 @@ def main():
         dataset = None
 
     with open(
-        os.path.join(os.path.dirname(__file__), 'remix/visualization/style.css')
+        os.path.join(os.path.dirname(__file__), 'lucid/visualization/style.css')
     ) as f:
         style = f.read()
     flx.assets.associate_asset(__name__, 'style.css', style)

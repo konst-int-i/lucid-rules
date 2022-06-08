@@ -11,13 +11,13 @@ datasets: # specify which experiments to run the experiments for
 
 extraction_methods: # specify which baselines to run
   - eclaire
-#  - cg-extract
-#  - eclaire-cart
-#  - eclaire-sample-weighted # hyp2
-#  - eclaire-agg # hyp1
-#  - eclaire-cart-sample-weighted # hyp2
-#  - eclaire-cart-prune # hyp3
-#  - eclaire-hist-cart # hyp5
+  - cg-extract
+  - eclaire-cart
+  - eclaire-sample-weighted # hyp2
+  - eclaire-agg # hyp1
+  - eclaire-cart-sample-weighted # hyp2
+  - eclaire-cart-prune # hyp3
+  - eclaire-hist-cart # hyp5
 
 
 force_rerun:
@@ -26,7 +26,3 @@ force_rerun:
   - grid_search
   - nn_train
   - rule_extraction
-
-
-explainability: # config for PipelineExplainer
-  metric: tau

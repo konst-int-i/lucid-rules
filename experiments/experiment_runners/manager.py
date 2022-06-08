@@ -21,15 +21,15 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.tree import DecisionTreeRegressor
 
 from . import dataset_configs
-from remix.extract_rules.pedagogical import extract_rules as pedagogical
-from remix.extract_rules.rem_t import extract_rules as rem_t
-from remix.extract_rules.rem_d import extract_rules as rem_d
-from remix.extract_rules.cg_extract import extract_rules as cg_extract
-from remix.extract_rules.deep_red_c5 import extract_rules as deep_red_c5
-from remix.extract_rules.eclaire_exp_base import EclaireBase as eclaire
-from remix.extract_rules.eclaire_extensions import *
-from remix.rules.ruleset import RuleScoreMechanism
-from remix.utils.data_handling import stratified_k_fold_split
+from lucid.extract_rules.pedagogical import extract_rules as pedagogical
+from lucid.extract_rules.rem_t import extract_rules as rem_t
+from lucid.extract_rules.rem_d import extract_rules as rem_d
+from lucid.extract_rules.cg_extract import extract_rules as cg_extract
+from lucid.extract_rules.deep_red_c5 import extract_rules as deep_red_c5
+from lucid.extract_rules.eclaire_exp_base import EclaireBase as eclaire
+from lucid.extract_rules.eclaire_extensions import *
+from lucid.rules.ruleset import RuleScoreMechanism
+from lucid.utils.data_handling import stratified_k_fold_split
 
 # Algorithm used for Rule Extraction
 RuleExMode = namedtuple('RuleExMode', ['mode', 'run'])

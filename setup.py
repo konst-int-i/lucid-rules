@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setuptools.setup(
-    name="remix",
+    name="lucid",
     version="0.0.1",
     author="Mateo Espinosa Zarlenga",
     author_email="me466@cam.ac.uk",

@@ -7,9 +7,9 @@ import sklearn
 import tensorflow as tf
 
 from model_training.train import load_model
-from remix.evaluate_rules.evaluate import evaluate, evaluate_estimator
-from remix.utils.resources import resource_compute
-from remix.rules.ruleset import Ruleset
+from lucid.evaluate_rules.evaluate import evaluate, evaluate_estimator
+from lucid.utils.resources import resource_compute
+from lucid.rules.ruleset import Ruleset
 from aix360.algorithms.rbm.boolean_rule_cg import BooleanRuleCG
 
 
