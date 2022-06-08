@@ -5,7 +5,7 @@ feature is thresholded.
 import numpy as np
 
 from collections import defaultdict
-from remix.rules.term import TermOperator
+from lucid.rules.term import TermOperator
 from flexx import flx, ui
 from pscript.stubs import d3, window, Math
 from sklearn.neighbors import KernelDensity

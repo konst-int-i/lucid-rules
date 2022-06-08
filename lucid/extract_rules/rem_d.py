@@ -5,12 +5,12 @@ import dill
 import logging
 import numpy as np
 
-from remix.logic_manipulator.substitute_rules import substitute
-from remix.rules.C5 import C5
-from remix.rules.rule import Rule
-from remix.rules.ruleset import Ruleset
-from remix.utils.data_handling import stratified_k_fold_split
-from remix.utils.parallelism import serialized_function_execute
+from lucid.logic_manipulator.substitute_rules import substitute
+from lucid.rules.C5 import C5
+from lucid.rules.rule import Rule
+from lucid.rules.ruleset import Ruleset
+from lucid.utils.data_handling import stratified_k_fold_split
+from lucid.utils.parallelism import serialized_function_execute
 from multiprocessing import Pool
 from tqdm import tqdm  # Loading bar for rule generation
 

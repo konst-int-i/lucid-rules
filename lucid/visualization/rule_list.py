@@ -4,8 +4,8 @@ listed in a scrollable pane. It also allows inserting editing options to each
 rule for more user interaction.
 """
 
-from remix.rules.rule import Rule
-from remix.rules.ruleset import Ruleset
+from lucid.rules.rule import Rule
+from lucid.rules.ruleset import Ruleset
 from flexx import flx, ui
 
 from .gui_window import RemixWindow

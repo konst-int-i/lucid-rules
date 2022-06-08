@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 import sklearn
 from typing import *
-from remix.rules.rule import Rule
-from remix.rules.term import Term
-from remix.logic_manipulator.merge import merge
+from lucid.rules.rule import Rule
+from lucid.rules.term import Term
+from lucid.logic_manipulator.merge import merge
 import logging
 import warnings
 warnings.filterwarnings("ignore")

@@ -7,10 +7,10 @@ and extracts rules from it.
 import numpy as np
 import pandas as pd
 
-from remix.logic_manipulator.merge import merge
-from remix.rules.C5 import C5
-from remix.rules.cart import cart_rules, random_forest_rules
-from remix.rules.ruleset import Ruleset
+from lucid.logic_manipulator.merge import merge
+from lucid.rules.C5 import C5
+from lucid.rules.cart import cart_rules, random_forest_rules
+from lucid.rules.ruleset import Ruleset
 
 ################################################################################
 ## Exposed Methods

@@ -4,8 +4,8 @@ Methods used for evaluating the performance of a given set of rules.
 
 import numpy as np
 import sklearn
-from remix.rules.ruleset import Ruleset
-from remix.rules.column_generation import BooleanRuleCG
+from lucid.rules.ruleset import Ruleset
+from lucid.rules.column_generation import BooleanRuleCG
 
 from . import metrics
 

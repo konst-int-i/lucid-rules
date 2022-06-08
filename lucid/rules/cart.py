@@ -2,7 +2,7 @@
 Module for learning and extracting rules using CART decision trees.
 """
 
-from remix.logic_manipulator.merge import merge
+from lucid.logic_manipulator.merge import merge
 from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor

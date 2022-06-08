@@ -3,8 +3,8 @@ Rule set loader class abstracts a widget capable of loading a
 Ruleset object from a serialized file.
 """
 
-from remix.rules.rule import Rule
-from remix.rules.ruleset import Ruleset
+from lucid.rules.rule import Rule
+from lucid.rules.ruleset import Ruleset
 from flexx import flx, ui, app
 
 from .gui_window import RemixWindow

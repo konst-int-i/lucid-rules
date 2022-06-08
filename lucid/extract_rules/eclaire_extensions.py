@@ -8,15 +8,15 @@ from typing import *
 import shap
 
 from .utils import ModelCache
-from remix.logic_manipulator.merge import merge
-from remix.logic_manipulator.substitute_rules import clausewise_substitute
-from remix.rules.C5 import C5
-from remix.rules.cart import cart_rules, random_forest_rules, hist_boosting_rules
-from remix.rules.rule import Rule
-from remix.rules.ruleset import Ruleset, RuleScoreMechanism
-from remix.utils.data_handling import stratified_k_fold_split
-from remix.utils.parallelism import serialized_function_execute
-from remix.extract_rules.eclaire_exp_base import EclaireBase
+from lucid.logic_manipulator.merge import merge
+from lucid.logic_manipulator.substitute_rules import clausewise_substitute
+from lucid.rules.C5 import C5
+from lucid.rules.cart import cart_rules, random_forest_rules, hist_boosting_rules
+from lucid.rules.rule import Rule
+from lucid.rules.ruleset import Ruleset, RuleScoreMechanism
+from lucid.utils.data_handling import stratified_k_fold_split
+from lucid.utils.parallelism import serialized_function_execute
+from lucid.extract_rules.eclaire_exp_base import EclaireBase
 from sklearn.feature_selection import mutual_info_classif
 from multiprocessing import Pool
 from tqdm import tqdm  # Loading bar for rule generation

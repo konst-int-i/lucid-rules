@@ -8,7 +8,7 @@ from collections import defaultdict
 from enum import Enum
 from .clause import ConjunctiveClause
 from .term import Term
-from remix.logic_manipulator.satisfiability import \
+from lucid.logic_manipulator.satisfiability import \
     remove_unsatisfiable_clauses
 
 

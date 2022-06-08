@@ -10,7 +10,7 @@ from pathlib import Path
 import shap
 from scipy import stats
 from box import Box
-from remix.explainability.ig import IGExplainer
+from lucid.explainability.ig import IGExplainer
 from collections import Counter
 
 

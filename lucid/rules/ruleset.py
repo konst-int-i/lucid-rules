@@ -12,8 +12,8 @@ import random
 
 from .clause import ConjunctiveClause
 from .rule import Rule, RulePredictMechanism
-from remix.logic_manipulator.merge import merge
-from remix.utils.parallelism import serialized_function_execute
+from lucid.logic_manipulator.merge import merge
+from lucid.utils.parallelism import serialized_function_execute
 
 ################################################################################
 ## Exposed Classes

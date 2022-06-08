@@ -1,6 +1,6 @@
 import numpy as np
-from remix.rules.ruleset import Ruleset
-from remix.rules.column_generation import column_generation_rules
+from lucid.rules.ruleset import Ruleset
+from lucid.rules.column_generation import column_generation_rules
 import pandas as pd
 
 

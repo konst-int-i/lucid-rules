@@ -1,4 +1,4 @@
-from remix.logic_manipulator.delete_redundant_terms import \
+from lucid.logic_manipulator.delete_redundant_terms import \
     remove_redundant_terms
 
 

@@ -4,9 +4,9 @@ tree.
 """
 
 from collections import defaultdict
-from remix.rules.clause import ConjunctiveClause
-from remix.rules.rule import Rule
-from remix.rules.ruleset import Ruleset
+from lucid.rules.clause import ConjunctiveClause
+from lucid.rules.rule import Rule
+from lucid.rules.ruleset import Ruleset
 
 
 ################################################################################

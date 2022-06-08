@@ -5,8 +5,8 @@ File containing widgets for making a new prediction with a given ruleset.
 import numpy as np
 import pandas as pd
 
-from remix.rules.rule import RulePredictMechanism
-from remix.rules.ruleset import Ruleset
+from lucid.rules.rule import RulePredictMechanism
+from lucid.rules.ruleset import Ruleset
 from flexx import flx, ui
 from io import StringIO
 from pscript.stubs import window, Infinity, Math
