@@ -1,25 +1,28 @@
 pipeline:
-#  - train_and_extract
+  - train_and_extract
   - explain
 
 datasets: # specify which experiments to run the experiments for
+  - magic
   - xor
-#  - synthetic
-#  - metabric-er
-#  - metabric-hist
+  - metabric-hist
+  - metabric-er
 # add more complex synthetic dataset
 
 extraction_methods: # specify which baselines to run
   - eclaire
-  - eclaire-cart
-  - eclaire-cart-sample-weighted
-  - eclaire-hist-cart
-  - eclaire-cart-prune
+#  - cg-extract
+#  - eclaire-cart
+#  - eclaire-sample-weighted # hyp2
+#  - eclaire-agg # hyp1
+#  - eclaire-cart-sample-weighted # hyp2
+#  - eclaire-cart-prune # hyp3
+#  - eclaire-hist-cart # hyp5
 
 
 force_rerun:
   - data_split
-  - fold_split
+  - fold_splitw
   - grid_search
   - nn_train
   - rule_extraction
