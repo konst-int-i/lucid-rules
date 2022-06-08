@@ -3,13 +3,10 @@ import logging
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
-import tensorflow as tf
 import pandas as pd
 import numpy as np
-from pathlib import Path
 import shap
 from scipy import stats
-from box import Box
 from lucid.explainability.ig import IGExplainer
 from collections import Counter
 
@@ -50,9 +47,6 @@ class PipelineExplainer(object):
         confidence = confidence_df.groupby("term", as_index=True).median()
         term_count = pd.Series(data=list(Counter(terms).values()), index=list(Counter(terms).keys()), name="terms")
         score_df = pd.merge(confidence, term_count, left_index=True, right_index=True)
-        features = list(set(terms))
-        clause_counter = {} # count clauses that contain a term for each feature
-        all_clauses = flatten([list(rule.premise) for rule in self.ruleset.rules])
 
         score_df["term_ratio"] = score_df.terms / score_df.terms.sum()
         # # weight the term ratio by confidence
@@ -71,6 +65,17 @@ class PipelineExplainer(object):
         return importance
 
     def calc_shap_values(self, x_train: pd.DataFrame, x_test: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        """
+        Calculates SHAP values based on training data and model
+        Args:
+            x_train(pd.DataFrame): train data used to train `self.model`
+            x_test(pd.DataFrame): test data used to calculate shap values
+            **kwargs: Other keywords
+
+        Returns:
+            pd.DataFrame: dataframe with shap values of shape ``(n_features x n_test_samples)``
+
+        """
         e = shap.DeepExplainer(self.model, x_train.to_numpy())
         shap_values = e.shap_values(x_test.to_numpy(), check_additivity=False) # note - this changed
         shap_value_df = pd.DataFrame(data=shap_values[0], columns=x_train.columns)
@@ -78,6 +83,14 @@ class PipelineExplainer(object):
 
 
     def calc_ig_values(self, x_test: pd.DataFrame, **kwargs):
+        """
+        Calculates the integrated gradient matrix for feature contributions with tabular data
+        Args:
+            x_test(pd.DataFrame): test data used to calculate integrated gradients
+
+        Returns:
+            pd.DataFrame: dataframe with IG contributions of shape ``(n_features x n_test_samples)``
+        """
         ig_deep = IGExplainer(model=self.model, type=None)
         ig_values = ig_deep.ig_values(x_test.to_numpy())
         ig_value_df = pd.DataFrame(data=ig_values, columns=x_test.columns)
@@ -89,14 +102,8 @@ class PipelineExplainer(object):
 
     def gold_standard_ranking(self, x_train: pd.DataFrame, x_test: pd.DataFrame, as_pct: bool=True, top_n: int = None) -> pd.Series:
         """
-
-        Args:
-            x_train:
-            as_pct:
-            top_n:
-
-        Returns:
-
+        Calculates the "gold standard", which is tested in hypotheses 1 of the dissertation and used as an extended
+        reference in the remaining hypotheses to calculate faithfulness.
         """
         shap_value_df = self.calc_shap_values(x_train, x_test)
         ig_value_df = self.calc_ig_values(x_test)
@@ -114,11 +121,6 @@ class PipelineExplainer(object):
                               ) -> pd.Series:
         """
         Returns feature importance ranking of the original model based on shapley values
-        Args:
-            as_pct:
-            top_n:
-
-        Returns:
         """
         logging.info("Fitting Shap Deep Explainer")
         if method == "shap":
@@ -136,13 +138,8 @@ class PipelineExplainer(object):
                       ):
         """
         Given two feature rankings, we write a bar plot of both to the output
-        Args:
-            rule_ranking:
-            original_ranking:
-            plot_top:
-
         Returns:
-
+            None: saves plots to given `save_path`, which is a relative path from the repository root
         """
         joint_df = self.join_rankings(original_ranking, rule_ranking, top_n)
 
@@ -157,6 +154,11 @@ class PipelineExplainer(object):
         plt.show()
 
     def join_rankings(self, original_ranking: pd.Series, rule_ranking: pd.Series, top_n: int=20):
+        """
+        Helper function join two separate rankings from pandas series into a single dataset.
+        This is mainly required to plot the comparison of the feature importance ranking from the original
+        and the rule-based model
+        """
         rule_plot = rule_ranking.sort_values(ascending=False).to_frame().iloc[:top_n]
         original_plot = original_ranking.sort_values(ascending=False).to_frame().iloc[:top_n]
         joint_df = rule_plot.merge(original_plot, how="outer", left_index=True, right_index=True, validate="1:1")
@@ -170,7 +172,7 @@ class PipelineExplainer(object):
 
     def aggregate_rankings(self, rank_1: pd.DataFrame, rank_2: pd.DataFrame, x_train):
         """
-
+        Calculates the l2
         Returns:
 
         """
@@ -279,4 +281,7 @@ class PipelineExplainer(object):
 
 
 def flatten(t):
+    """
+    Helper function to flatten a nested list
+    """
     return [item for sublist in t for item in sublist]
