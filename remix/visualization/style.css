@@ -85,7 +85,9 @@ fieldset.flx-GroupWidget.flx-Widget.scrollable_group {
 .flx-Label.flx-Widget.rule-list-rule-text, .rule-list-rule-text {
     margin: auto;
     overflow-x: scroll;
+    /*overflow-y: visible;*/
     text-align: left;
+    font-size: 100%;
 }
 
 
